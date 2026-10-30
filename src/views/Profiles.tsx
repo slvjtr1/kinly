@@ -54,12 +54,19 @@ export default function Profiles({ manage: startManage = false, onClose }: { man
     void refreshProfiles().catch(() => {});
   }, []);
 
+  // Esc (or a remote's Back) leaves the profile editor, else closes this screen. The very first
+  // profile has to be created, so its editor stays.
+  const firstProfile = sync.profilesLoaded && sync.profiles.length === 0;
   useEffect(() => {
-    if (!onClose || editing || pad) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    if (pad || (editing ? firstProfile : !onClose)) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (editing) setEditing(null);
+      else onClose?.();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, editing, pad]);
+  }, [onClose, editing, pad, firstProfile]);
 
   const empty = sync.profilesLoaded && sync.profiles.length === 0;
   const showEditor = editing ?? (empty ? "new" : null);

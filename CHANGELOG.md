@@ -4,6 +4,19 @@
 
 A pre-release for Windows x64 and Linux. Kinly 1.0.1 remains the stable release.
 
+### Beta 2
+Fixes found while testing Beta 1 on Windows:
+- The focus highlight now always shows when you use the arrow keys, also right after
+  a mouse click (it could stay invisible before).
+- Back returns focus to the card you opened, not to another control with the same
+  title (such as the matching dot of the Home carousel).
+- Arrow keys reach buttons inside a field, such as the search box's clear button.
+- Esc leaves the profile editor.
+- The "Downloaded in Kinly" list is laid out correctly; small files show their size
+  in KB.
+- Corrected texts: the default theme (Kinly), where in-app downloads are saved, and
+  the clear-history confirmation for a single search.
+
 > **Trakt:** Trakt integration is temporarily unavailable in Kinly 1.1.0 Beta due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
 > Saved Trakt connections stay on your computer, untouched, and Kinly makes no Trakt
 > requests in this version.

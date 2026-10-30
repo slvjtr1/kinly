@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyDownloadEvent, downloadTitle, matchesDownload, sortDownloads } from "../src/lib/downloads";
+import { formatBytes } from "../src/lib/streams";
 import type { DownloadRecord } from "../src/lib/tauri";
 
 const rec = (id: number, over: Partial<DownloadRecord> = {}): DownloadRecord => ({
@@ -38,5 +39,13 @@ describe("downloads list", () => {
     expect(l.map((r) => r.id)).toContain(3);
     l = applyDownloadEvent(l, rec(3, { state: "cancelled" }));
     expect(l.map((r) => r.id)).toEqual([2, 1]);
+  });
+
+  it("formats sizes from KB to GB", () => {
+    expect(formatBytes(202_477)).toBe("198 KB");
+    expect(formatBytes(300)).toBe("1 KB");
+    expect(formatBytes(5 * 1024 ** 2)).toBe("5 MB");
+    expect(formatBytes(4.4 * 1024 ** 3)).toBe("4.4 GB");
+    expect(formatBytes(0)).toBe("");
   });
 });

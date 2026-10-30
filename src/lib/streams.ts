@@ -171,7 +171,8 @@ export const QUALITY_LABEL: Record<QualityGroup, string> = { "2160": "4K", "1080
 
 export function formatBytes(n: number | null): string {
   if (!n) return "";
-  return n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`;
+  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
+  return n >= 1024 ** 2 ? `${Math.round(n / 1024 ** 2)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 }
 
 /** File name for an in-app download: the source's own file name, else the title (and episode). */

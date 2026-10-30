@@ -134,7 +134,10 @@ export default function Search({ initial }: { initial: string }) {
             </>
           }
         >
-          <p>This removes all {history.length} recent searches for this profile on this computer. Your watch history and downloads are not affected.</p>
+          <p>
+            This removes {history.length === 1 ? "your recent search" : `all ${history.length} recent searches`} for this profile on this computer. Your watch history and downloads are
+            not affected.
+          </p>
         </Modal>
       )}
     </div>

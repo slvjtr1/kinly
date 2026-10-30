@@ -247,7 +247,9 @@ html[data-perf="maximum"] .drop-overlay {
   font-size: 13px;
   font-weight: 400;
 }
-.managed-item {
+/* Two columns (the play area holds the icon and text). `.item` in app.css loads later, so this
+   needs the higher specificity. */
+.item.managed-item {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 .managed-play {

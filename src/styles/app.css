@@ -2080,22 +2080,40 @@ html[data-perf="performance"] *:not(.spinner):not(.skeleton):not(.skeleton-row):
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-2) 22%, transparent);
 }
 
+/* After a key press (data-nav="keys", set by spatialNav.ts) focus is always shown, also where the
+   browser decides :focus-visible does not apply (focus moved by script after a mouse click). */
+:root[data-nav="keys"] :focus:not(input, textarea) {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+:root[data-nav="keys"] :is(.card, .wide-card, .episode-card):focus {
+  outline: none;
+}
+:root[data-nav="keys"] .card:focus .poster,
+:root[data-nav="keys"] .wide-card:focus .thumb,
+:root[data-nav="keys"] .episode-card:focus .thumb {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+}
+:root[data-nav="keys"] .card:focus .poster {
+  transform: translateY(-6px);
+}
+
 /* TV mode (Settings → Appearance): bolder focus and larger targets for viewing from a distance. */
-:root[data-tv="true"] :focus-visible {
+:root[data-tv="true"] :focus-visible,
+:root[data-tv="true"][data-nav="keys"] :focus {
   outline-width: 4px;
   outline-offset: 4px;
 }
-:root[data-tv="true"] .card:focus-visible .poster,
-:root[data-tv="true"] .wide-card:focus-visible .thumb,
-:root[data-tv="true"] .episode-card:focus-visible .thumb {
+:root[data-tv="true"] :is(.card, .wide-card, .episode-card):is(:focus-visible, [data-nav="keys"] *:focus) :is(.poster, .thumb) {
   outline-width: 4px;
   outline-offset: 5px;
   box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-2) 25%, transparent);
 }
-:root[data-tv="true"] .card:focus-visible .poster {
+:root[data-tv="true"] .card:is(:focus-visible, [data-nav="keys"] *:focus) .poster {
   transform: translateY(-6px) scale(1.04);
 }
-:root[data-tv="true"] .card:focus-visible .card-title {
+:root[data-tv="true"] .card:is(:focus-visible, [data-nav="keys"] *:focus) .card-title {
   color: var(--accent-2);
 }
 :root[data-tv="true"] .btn,

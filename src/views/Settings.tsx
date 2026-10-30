@@ -98,7 +98,7 @@ function Appearance() {
       <div className="setting setting-block">
         <div>
           <div className="setting-label">Theme</div>
-          <div className="setting-help">Ocean is the default. OLED uses true black, which saves power on OLED screens.</div>
+          <div className="setting-help">Kinly is the default. OLED uses true black, which saves power on OLED screens.</div>
         </div>
         <div className="theme-grid" role="radiogroup" aria-label="Theme">
           {THEMES.map((t) => (
@@ -411,7 +411,7 @@ function LibrarySection() {
       <Row label="Download folder" help="Where Kinly saves the videos you download. Changing it only affects new downloads; earlier ones stay where they are and stay listed on the Downloads page.">
         <DownloadFolderSetting compact />
       </Row>
-      <Row label="Download outside Kinly" help={<>Off: Kinly saves downloads to your Downloads folder and shows their progress on the Downloads page. On: the link opens in your browser and is copied, for your own download manager <PrismHint />.</>}>
+      <Row label="Download outside Kinly" help={<>Off: Kinly saves downloads to the download folder above and shows their progress on the Downloads page. On: the link opens in your browser and is copied, for your own download manager <PrismHint />.</>}>
         <Switch checked={l.downloadExternally} onChange={(v) => set({ downloadExternally: v })} label="Download outside Kinly" />
       </Row>
     </>

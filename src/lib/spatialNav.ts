@@ -27,22 +27,25 @@ export function navScore(from: Box, to: Box, dir: Dir): number | null {
   const tcx = (to.left + to.right) / 2;
   const tcy = (to.top + to.bottom) / 2;
   const horizontal = dir === "left" || dir === "right";
+  // A field with a button inside it (search box and its clear button): the field is still to the
+  // button's left, though its box starts before the button's middle.
+  const contains = to.left <= from.left && to.right >= from.right && to.top <= from.top && to.bottom >= from.bottom;
   let ahead: number;
   switch (dir) {
     case "right":
-      if (tcx <= fcx + 1 || to.left < fcx || to.right <= from.right) return null;
+      if (tcx <= fcx + 1 || (to.left < fcx && !contains)) return null;
       ahead = Math.max(0, to.left - from.right);
       break;
     case "left":
-      if (tcx >= fcx - 1 || to.right > fcx || to.left >= from.left) return null;
+      if (tcx >= fcx - 1 || (to.right > fcx && !contains)) return null;
       ahead = Math.max(0, from.left - to.right);
       break;
     case "down":
-      if (tcy <= fcy + 1 || to.top < fcy || to.bottom <= from.bottom) return null;
+      if (tcy <= fcy + 1 || (to.top < fcy && !contains)) return null;
       ahead = Math.max(0, to.top - from.bottom);
       break;
     case "up":
-      if (tcy >= fcy - 1 || to.bottom > fcy || to.top >= from.top) return null;
+      if (tcy >= fcy - 1 || (to.bottom > fcy && !contains)) return null;
       ahead = Math.max(0, from.top - to.bottom);
       break;
   }
@@ -152,11 +155,23 @@ const isTyping = (el: Element | null) =>
 let lastBox: Box | null = null;
 let keyboardMode = false;
 
+/**
+ * Keyboard mode also sets `data-nav="keys"` on <html>, which the focus styles use: browsers do not
+ * always show :focus-visible when script moves focus after a mouse click (WebView2 does not).
+ */
+function setKeyboardMode(on: boolean) {
+  if (on === keyboardMode) return;
+  keyboardMode = on;
+  if (on) document.documentElement.dataset.nav = "keys";
+  else delete document.documentElement.dataset.nav;
+}
+
 /** True after keyboard or remote input, until the next pointer input. */
 export const usingKeyboard = () => keyboardMode;
 
 export function focusElement(el: HTMLElement) {
-  el.focus({ preventScroll: true });
+  // `focusVisible` is honoured where supported; data-nav="keys" covers the rest.
+  el.focus({ preventScroll: true, focusVisible: true } as FocusOptions);
   const reduce = document.documentElement.dataset.reduceMotion === "true" || matchMedia("(prefers-reduced-motion: reduce)").matches;
   el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce ? "auto" : "smooth" });
   lastBox = boxOf(el);
@@ -188,7 +203,7 @@ export type NavOptions = {
 /** Installs the app-wide handler; returns its uninstaller. */
 export function installSpatialNav(opts: NavOptions): () => void {
   const onKey = (e: KeyboardEvent) => {
-    keyboardMode = true;
+    if (!["Shift", "Control", "Alt", "Meta"].includes(e.key)) setKeyboardMode(true);
     if (e.key !== "Escape" && isBackKey(e)) {
       // A remote's Back key acts exactly like Escape everywhere (dialogs, the player, sheets),
       // so every Escape handler in the app serves remotes too.
@@ -226,9 +241,7 @@ export function installSpatialNav(opts: NavOptions): () => void {
       if (opts.onBack()) e.preventDefault();
     }
   };
-  const onPointer = () => {
-    keyboardMode = false;
-  };
+  const onPointer = () => setKeyboardMode(false);
   const onFocus = (e: FocusEvent) => {
     if (e.target instanceof HTMLElement && e.target !== document.body) lastBox = boxOf(e.target);
   };
@@ -245,9 +258,12 @@ export function installSpatialNav(opts: NavOptions): () => void {
 // ---------------------------------------------------------------------------------------------
 // Focus memory per view, so Back returns to the card you came from.
 
-export type FocusMark = { label: string; index: number };
+/** What kind of element it was (tag and first class), its label, and where it was in the page. */
+export type FocusMark = { kind: string; label: string; index: number };
+type Described = { kind: string; label: string };
 
 const labelOf = (el: HTMLElement) => (el.getAttribute("aria-label") || el.title || el.textContent || "").trim().slice(0, 80);
+const kindOf = (el: HTMLElement) => `${el.tagName}.${(el.getAttribute("class") ?? "").trim().split(/\s+/)[0]}`;
 
 const allFocusable = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)];
 
@@ -255,27 +271,49 @@ const allFocusable = (root: ParentNode) => [...root.querySelectorAll<HTMLElement
 export function markFocus(el: Element | null = document.activeElement): FocusMark | null {
   if (!(el instanceof HTMLElement) || el === document.body) return null;
   const index = allFocusable(document).indexOf(el);
-  return index < 0 ? null : { label: labelOf(el), index };
+  return index < 0 ? null : { kind: kindOf(el), label: labelOf(el), index };
+}
+
+/**
+ * Which of `list` is the element `mark` describes: same kind and label, nearest to its old
+ * position (the same title can appear twice, e.g. in the hero and in a row). With `final`, an
+ * element of the same kind nearest the old position will do. -1 when nothing fits.
+ */
+export function findMarked(list: Described[], mark: FocusMark, final = false): number {
+  let best = -1;
+  let bestScore = Infinity;
+  list.forEach((d, i) => {
+    if (d.kind !== mark.kind) return;
+    const exact = !!mark.label && d.label === mark.label;
+    if (!exact && !final) return;
+    const score = Math.abs(i - mark.index) + (exact ? 0 : 1e6);
+    if (score < bestScore) {
+      bestScore = score;
+      best = i;
+    }
+  });
+  return best;
 }
 
 /**
  * Focuses the element described by `mark` once it exists (views load their content
  * asynchronously), trying for up to `timeoutMs`. Stops if something else gets focus first.
  */
-export function restoreFocus(mark: FocusMark, timeoutMs = 2500): () => void {
+export function restoreFocus(mark: FocusMark, timeoutMs = 4000): () => void {
   const started = Date.now();
   let timer = 0;
   const attempt = () => {
     const a = document.activeElement;
     if (a instanceof HTMLElement && a !== document.body) return;
+    const final = Date.now() - started >= timeoutMs;
+    // Indexes as in markFocus (all focusables); hidden ones are given no kind, so they never match.
     const list = allFocusable(document);
-    const late = Date.now() - started > timeoutMs / 2;
-    const el = (mark.label ? list.find((x) => labelOf(x) === mark.label && usable(x)) : undefined) ?? (late ? list.slice(Math.min(mark.index, list.length - 1)).find(usable) : undefined);
-    if (el) {
-      focusElement(el);
+    const i = findMarked(list.map((el) => ({ kind: kindOf(el) === mark.kind && usable(el) ? mark.kind : "", label: labelOf(el) })), mark, final);
+    if (i >= 0) {
+      focusElement(list[i]);
       return;
     }
-    if (Date.now() - started < timeoutMs) timer = window.setTimeout(attempt, 120);
+    if (!final) timer = window.setTimeout(attempt, 150);
   };
   timer = window.setTimeout(attempt, 60);
   return () => window.clearTimeout(timer);

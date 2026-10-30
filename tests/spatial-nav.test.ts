@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closest, isBackKey, navScore, pickNext, type Box } from "../src/lib/spatialNav";
+import { closest, findMarked, isBackKey, navScore, pickNext, type Box } from "../src/lib/spatialNav";
 
 const box = (left: number, top: number, w = 100, h = 150): Box => ({ left, top, right: left + w, bottom: top + h });
 
@@ -66,5 +66,33 @@ describe("spatial navigation", () => {
     expect(isBackKey({ key: "BrowserBack", keyCode: 166 })).toBe(true);
     expect(isBackKey({ key: "Unidentified", keyCode: 461 })).toBe(true);
     expect(isBackKey({ key: "Enter", keyCode: 13 })).toBe(false);
+  });
+
+  it("finds the remembered card, not an earlier button with the same title", () => {
+    const page = [
+      { kind: "BUTTON.brand", label: "Kinly home" },
+      { kind: "BUTTON.hc-dot", label: "Obsession" },
+      { kind: "BUTTON.card", label: "The Invite" },
+      { kind: "BUTTON.card", label: "Obsession" },
+    ];
+    expect(findMarked(page, { kind: "BUTTON.card", label: "Obsession", index: 9 })).toBe(3);
+    expect(findMarked(page, { kind: "BUTTON.hc-dot", label: "Obsession", index: 1 })).toBe(1);
+  });
+
+  it("waits for the remembered element, then settles for the nearest of the same kind", () => {
+    const loading = [{ kind: "BUTTON.brand", label: "Kinly home" }, { kind: "BUTTON.card", label: "Dune" }, { kind: "BUTTON.card", label: "Heat" }];
+    const mark = { kind: "BUTTON.card", label: "Obsession", index: 2 };
+    expect(findMarked(loading, mark)).toBe(-1);
+    expect(findMarked(loading, mark, true)).toBe(2);
+    expect(findMarked([{ kind: "BUTTON.brand", label: "Obsession" }], mark, true)).toBe(-1);
+  });
+
+  it("reaches a button inside a text field and comes back", () => {
+    const field = box(30, 70, 390, 40);
+    const clear = box(392, 78, 24, 24);
+    const pill = box(550, 20, 140, 36);
+    expect(pickNext(field, [{ box: clear, item: "clear" }, { box: pill, item: "pill" }], "right")).toBe("clear");
+    expect(pickNext(clear, [{ box: field, item: "field" }], "left")).toBe("field");
+    expect(pickNext(clear, [{ box: field, item: "field" }], "up")).toBeNull();
   });
 });

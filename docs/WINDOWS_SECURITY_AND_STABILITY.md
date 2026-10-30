@@ -109,4 +109,20 @@ See "Verification of the 1.1.0 Beta build" at the end of this page.
 
 ## Verification of the 1.1.0 Beta build
 
-Pending: filled in when the release build has been tested on the Windows machine.
+Tested on the same Windows 11 machine on 2026-10-30, with real-time protection on and
+security intelligence 1.463.33.0 (the version that flagged 1.0.x):
+
+- `Kinly_1.1.0_x64-setup.exe` from the v1.1.0-beta release: SHA-256 matched the digest
+  GitHub shows; a Defender custom scan of the installer found nothing.
+- Silent install (`/S`), then `kinly.exe` started three times over about 20 minutes
+  (browsing, search, an in-app download that was cancelled, a delete, trailers played
+  through libmpv): **no Defender detection** in that time. `kinly.exe` carries
+  CompanyName "Kinly contributors" and version 1.1.0.
+- With `libmpv-2.dll` renamed away, Kinly started normally; playing logged
+  "libmpv-2.dll is missing … Reinstall Kinly from the official release" and the trailer
+  fell back to the YouTube player instead of the app failing to start. The file was
+  restored afterwards (SHA-256 unchanged).
+
+This is one machine at one signature version. It does not prove that Defender or other
+products will not flag a later build, because heuristic models and reputation change.
+Code signing and submission to Microsoft remain the recommended steps.
