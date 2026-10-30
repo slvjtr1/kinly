@@ -5,9 +5,14 @@
 #     only in the tag and in src/lib/channel.ts), or
 #   - run it by hand (Actions > Release > Run workflow); with a tag it fills a
 #     release, without one the packages stay as workflow artifacts.
-# Packages: Linux .deb + .AppImage (ubuntu-24.04), Windows x64 NSIS .exe + .msi,
-# plus the corresponding source of the bundled GPL/LGPL binaries (GPL-SOURCES.txt).
-# The release is created as a draft, filled by both build jobs, then published by
+# Packages: Linux .deb + .AppImage (ubuntu-24.04), Windows x64 NSIS .exe + .msi.
+# The release itself carries only those four installers (GitHub adds the source code
+# archives and shows each asset's SHA-256 digest). The SHA256SUMS files are printed in
+# the job logs and kept in the workflow artifacts. The corresponding source of the
+# bundled GPL/LGPL binaries (GPL-SOURCES.txt and the source archives) goes to a
+# companion pre-release in this repository, `sources-<tag>`, which the release notes
+# link to, so it is offered from the same place as the binaries.
+# The release is created as a draft, filled by the build jobs, then published by
 # the last job: as a pre-release when the tag has a label, as the latest release
 # otherwise (or left as a draft when the run asks for one). The release notes are
 # the version's section of CHANGELOG.md when there is one.
@@ -71,8 +76,17 @@ jobs:
             flags=()
             if [ "$PRERELEASE" = "true" ]; then title="Kinly ${TAG#v}"; flags+=(--prerelease); fi
             notes=$(awk -v v="$VERSION" '$0 ~ "^## " v "( |$)" { f = 1; next } /^## / && f { exit } f' CHANGELOG.md)
-            if [ -n "${notes//[[:space:]]/}" ]; then flags+=(--notes "$notes"); else flags+=(--generate-notes); fi
-            gh release create "$TAG" --draft "${flags[@]}" --title "$title" --target "$GITHUB_SHA"
+            if [ -z "${notes//[[:space:]]/}" ]; then notes="Kinly ${TAG#v}"; fi
+            sources="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/sources-$TAG"
+            printf -v notes '%s\n\n---\nSource code for the GPL/LGPL components bundled with these packages (libmpv, FFmpeg): [sources-%s](%s). GitHub shows the SHA-256 digest of each file below.' "$notes" "$TAG" "$sources"
+            gh release create "$TAG" --draft "${flags[@]}" --title "$title" --notes "$notes" --target "$GITHUB_SHA"
+          fi
+          if gh release view "sources-$TAG" >/dev/null 2>&1; then
+            echo "release sources-$TAG exists; assets will be replaced"
+          else
+            gh release create "sources-$TAG" --draft --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title "Kinly ${TAG#v}: GPL corresponding source" \
+              --notes "Corresponding source for the GPL/LGPL binaries bundled with [Kinly ${TAG#v}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG): libmpv-2.dll and ffmpeg.exe on Windows, libmpv and the FFmpeg libraries in the AppImage. GPL-SOURCES.txt lists what each archive contains. This is not an installer."
           fi
 
   linux:
@@ -118,18 +132,20 @@ jobs:
           mkdir -p out
           cp src-tauri/target/release/bundle/deb/Kinly_"$VERSION"_amd64.deb out/
           cp src-tauri/target/release/bundle/appimage/Kinly_"$VERSION"_amd64.AppImage out/
-          (cd out && sha256sum Kinly_* > SHA256SUMS-linux.txt && cat SHA256SUMS-linux.txt)
+          (cd out && sha256sum Kinly_* | tee ../SHA256SUMS-linux.txt)
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kinly-linux-${{ needs.prepare.outputs.version }}
-          path: out/*
+          path: |
+            out/*
+            SHA256SUMS-linux.txt
           if-no-files-found: error
       - name: Upload to the release
         if: needs.prepare.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release upload "$TAG" out/* --clobber
+        run: gh release upload "$TAG" out/Kinly_* --clobber
 
   windows:
     name: Windows x64 NSIS + MSI
@@ -172,12 +188,14 @@ jobs:
           Copy-Item src-tauri/target/release/bundle/msi/*.msi out/
           Get-ChildItem out -File | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
-          } | Set-Content out/SHA256SUMS-windows.txt -Encoding ascii
-          Get-Content out/SHA256SUMS-windows.txt
+          } | Set-Content SHA256SUMS-windows.txt -Encoding ascii
+          Get-Content SHA256SUMS-windows.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kinly-windows-${{ needs.prepare.outputs.version }}
-          path: out/*
+          path: |
+            out/*
+            SHA256SUMS-windows.txt
           if-no-files-found: error
       - name: Upload to the release
         if: needs.prepare.outputs.tag != ''
@@ -226,11 +244,11 @@ jobs:
           } > out/GPL-SOURCES.txt
           (cd out && sha256sum source-* > SHA256SUMS-sources.txt)
           cat out/GPL-SOURCES.txt out/SHA256SUMS-sources.txt
-      - name: Upload to the release
+      - name: Upload to the sources release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
-        run: gh release upload "$TAG" out/* --clobber
+        run: gh release upload "sources-$TAG" out/* --clobber
 
   publish:
     name: Publish the release
@@ -244,9 +262,12 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
           PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
+          # The sources release is never "Latest". It goes public first, so the link in the
+          # main release's notes works from the moment that release is out.
+          gh release edit "sources-$TAG" --draft=false --prerelease --latest=false
           if [ "$PRERELEASE" = "true" ]; then
             gh release edit "$TAG" --draft=false --prerelease --latest=false
           else
             gh release edit "$TAG" --draft=false --prerelease=false --latest
           fi
-          gh release view "$TAG" --json url,isPrerelease,isDraft
+          gh release view "$TAG" --json url,isPrerelease,isDraft,assets --jq '{url, isPrerelease, isDraft, assets: [.assets[].name]}'

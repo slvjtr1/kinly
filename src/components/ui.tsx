@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, Inbox, X } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { MetaPreview } from "../lib/addons";
 import { useApp } from "../state";
+import { trapDialogFocus } from "../lib/spatialNav";
 
 /**
  * A stable "open this title" callback for MetaCard. Stable props keep the memoised cards from
@@ -161,9 +162,11 @@ export function Modal({ title, onClose, children, actions }: { title: string; on
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => (box.current ? trapDialogFocus(box.current) : undefined), []);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>{title}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>

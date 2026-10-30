@@ -147,9 +147,9 @@ pub fn run() {
             app.manage(store::Store::new(paths.config.clone()));
             app.manage(subs::SubCache::new(paths.cache.join("subtitles")));
             app.manage(player::PlayerState::new(fonts));
+            app.manage(download::Downloader::load(paths.data.join("downloads.json")));
             app.manage(paths);
             app.manage(local::Downloads::new());
-            app.manage(download::Downloader::default());
             local::start_watcher(handle.clone());
             let args: Vec<String> = std::env::args().collect();
             let cwd = std::env::current_dir().unwrap_or_default();
@@ -181,7 +181,10 @@ pub fn run() {
             local::downloads_list,
             download::download_start,
             download::download_cancel,
-            download::downloads_active,
+            download::downloads_managed,
+            download::download_delete,
+            download::download_dir_check,
+            download::download_default_dir,
             caps::system_caps,
             introdb::introdb_segments,
             authcb::auth_callback_listen,
@@ -196,7 +199,7 @@ pub fn run() {
                     player::shutdown(&p);
                 }
                 if let Some(d) = app.try_state::<download::Downloader>() {
-                    download::cancel_all(&d);
+                    d.cancel_all();
                 }
             }
         });

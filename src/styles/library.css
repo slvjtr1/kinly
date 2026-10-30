@@ -212,3 +212,62 @@ html[data-perf="maximum"] .drop-overlay {
     opacity: 0.5;
   }
 }
+
+/* Downloads: folder setting and Kinly-managed downloads */
+.download-folder {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+}
+.download-folder.compact {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.download-folder-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+.download-folder-text code {
+  word-break: break-all;
+}
+.downloads-sort {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.managed-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.managed-play {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.managed-play.static {
+  cursor: default;
+}
+.icon-btn.danger:hover:not(:disabled) {
+  color: var(--danger);
+}

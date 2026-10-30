@@ -15,8 +15,8 @@
 //! thread, and no D3D11 frames for `d3d11vpp`, so no RTX Video Super Resolution.
 //! The native d3d11 VO is mpv's best-tested Windows path: zero-copy D3D11VA,
 //! a flip-model swap chain, its own render thread, and `d3d11vpp` works. Apps
-//! that ship this layout (Compass, which Kinly derives from; Stremio's Windows
-//! shell) do the same.
+//! that ship this layout (Compass, parts of which Kinly adapts for Linux;
+//! Stremio's Windows shell) do the same.
 //!
 //! Stacking: a new child window is created at the top of the z-order, above
 //! WebView2, so a WinEvent hook (EVENT_OBJECT_CREATE/SHOW for this process)

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Kinly",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "identifier": "app.kinly.desktop",
   "build": {
     "beforeDevCommand": "npm run dev:web",
@@ -46,6 +46,7 @@
     "category": "Video",
     "shortDescription": "Lean media center for movies and series",
     "longDescription": "Kinly is a focused media center for movies and TV series with an integrated mpv player, automatic subtitle selection and synchronization, and first-class Arabic subtitle typography.",
+    "publisher": "Kinly contributors",
     "copyright": "Copyright (c) 2026 Kinly contributors. Portions (c) 2026 Compass (MIT).",
     "license": "MIT",
     "licenseFile": "../LICENSE",
@@ -66,6 +67,8 @@
       "../licenses/Inter-OFL.txt": "notices/Inter-OFL.txt",
       "../licenses/GPL-2.0.txt": "notices/GPL-2.0.txt",
       "../licenses/LGPL-2.1.txt": "notices/LGPL-2.1.txt",
+      "../licenses/CC-BY-4.0.txt": "notices/CC-BY-4.0.txt",
+      "../licenses/CC0-1.0.txt": "notices/CC0-1.0.txt",
       "../THIRD_PARTY_NOTICES.md": "notices/THIRD_PARTY_NOTICES.md",
       "../LICENSE": "notices/LICENSE"
     },

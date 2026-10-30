@@ -1,6 +1,6 @@
 [package]
 name = "kinly"
-version = "1.0.1"
+version = "1.1.0"
 description = "Kinly — a lean media center for movies and series"
 authors = ["Kinly contributors"]
 license = "MIT"
@@ -47,6 +47,7 @@ windows = { version = "0.62", features = [
   "Win32_Graphics_Direct3D11",
   "Win32_Graphics_Dxgi",
   "Win32_Graphics_Dxgi_Common",
+  "Win32_System_LibraryLoader",
   "Win32_System_Registry",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",

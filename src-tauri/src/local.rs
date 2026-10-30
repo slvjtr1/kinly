@@ -188,7 +188,12 @@ pub fn start_watcher(app: tauri::AppHandle) {
                     let now = now_secs();
                     let polled: Vec<(String, u64, u64)> = files.iter().map(|f| (f.path.clone(), f.size, age_of(f, now))).collect();
                     let done = app.state::<Downloads>().tracker.lock().map(|mut t| t.observe(&polled)).unwrap_or_default();
+                    let managed = app.state::<crate::download::Downloader>();
                     for path in done {
+                        // Kinly's own downloads are announced when they finish (download.rs).
+                        if managed.is_managed(&path) {
+                            continue;
+                        }
                         if let Some(f) = files.iter().find(|f| f.path == path) {
                             log_info!("downloads", "finished: {}", f.name);
                             let _ = app.emit("downloads:new", f.clone());

@@ -3,6 +3,7 @@
 Kinly works fully offline as a **guest**. Signing in to a Kinly account (Supabase) adds
 streaming-app style **profiles** and syncs your data between computers. **Trakt** is a separate,
 optional connection: users click *Connect* and enter a code on trakt.tv/activate.
+(Trakt is switched off in 1.1.0 Beta; see the Trakt section below.)
 
 ## What is stored where
 
@@ -172,6 +173,10 @@ Limits, by design:
   the next one is loaded from its local cache and merged with the server copy.
 
 ## Trakt
+
+> Trakt integration is temporarily unavailable in Kinly 1.1.0 Beta due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
+> The description below is how it works when it is turned on; see
+> [docs/TRAKT_TEMPORARILY_DISABLED.md](docs/TRAKT_TEMPORARILY_DISABLED.md).
 
 By default Kinly uses one shared Trakt app. Its secret can't live in a desktop app, so the Edge
 Function `trakt-oauth` (`supabase/functions/trakt-oauth`) holds it and relays only Trakt's four

@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.1.0 Beta — 2026-10-30
+
+A pre-release for Windows x64 and Linux. Kinly 1.0.1 remains the stable release.
+
+> **Trakt:** Trakt integration is temporarily unavailable in Kinly 1.1.0 Beta due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
+> Saved Trakt connections stay on your computer, untouched, and Kinly makes no Trakt
+> requests in this version.
+
+### New
+- Keyboard and remote navigation across the whole interface: arrow keys move between
+  cards, rows, menus and buttons, Enter opens, Esc / Back closes dialogs and goes back
+  to the card you came from. Dialogs keep focus inside until closed. New **TV mode**
+  (Settings → Appearance) with larger focus highlights and controls.
+- Search history: recent searches per profile, kept on this computer. Click one to
+  search again, remove single entries, or clear the history (with confirmation).
+- Downloads page lists everything downloaded in Kinly with title, episode, size,
+  status and location. Filter, sort (newest, title, size, status), play, and delete
+  with confirmation. Only files Kinly downloaded can be deleted, never while they
+  are downloading or playing; moved or deleted files show as Missing; interrupted
+  downloads are cleaned up and can be dismissed.
+- Download folder setting (Settings → Library) with a folder picker; the folder is
+  checked for write access. The default is now your Videos folder. Existing
+  downloads keep working when the folder changes.
+- New built-in profile pictures: 36 illustrated avatars (DiceBear "Adventurer" and
+  "Lorelei" by Lisa Wischofsky). Profiles that used an old built-in picture get a
+  new one automatically; picture links are unchanged.
+
+### Changed
+- Trakt is switched off for this release (see above).
+- Trailers use the bundled or installed yt-dlp first and download a new copy only
+  when none works.
+- Windows: if the video engine (`libmpv-2.dll`) is missing or cannot be loaded,
+  Kinly still opens and explains the problem when you play something, instead of
+  failing to start.
+- Releases carry only the four installers. The source for the bundled GPL/LGPL
+  components is published as a companion release (`sources-<tag>`), linked below.
+  GitHub shows each file's SHA-256 digest.
+- Licences: DiceBear avatar credits and the CC BY 4.0 / CC0 texts added to the
+  notices; Compass attribution described file by file.
+
+### Known limitations
+- Kinly is not code-signed. Microsoft Defender flagged earlier builds of
+  `kinly.exe` with a generic machine-learning detection
+  (`Trojan:Win32/Bearfoos.A!ml`); see `docs/WINDOWS_SECURITY_AND_STABILITY.md`.
+- Remote navigation was tested with a keyboard; Kinly does not run on TVs yet.
+
 ## 1.0.1 — 2026-10-30
 
 ### Changed

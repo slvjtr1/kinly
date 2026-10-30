@@ -8,7 +8,8 @@ import {
   type Profile,
 } from "../lib/sync";
 import { useApp } from "../state";
-import { AVATAR_ART, AVATAR_CATEGORIES, AvatarSvg, DEFAULT_AVATAR, avatarArt, avatarCategory, type AvatarCategory } from "./avatars";
+import { FEATURES } from "../lib/features";
+import { AVATAR_ART, AVATAR_CATEGORIES, AvatarImage, DEFAULT_AVATAR, avatarArt, avatarCategory, type AvatarCategory } from "./avatars";
 import { HOUSEHOLD_NOTE, LockBadge, NewPinFields, PinPad, PinSettings } from "./PinPad";
 import "../styles/library.css";
 import "../styles/profiles.css";
@@ -28,7 +29,7 @@ export function Avatar({ avatar, size = 40 }: { avatar: string; size?: number })
       {url && failed !== avatar ? (
         <img src={avatar} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" draggable={false} onError={() => setFailed(avatar)} />
       ) : (
-        <AvatarSvg avatarKey={url ? DEFAULT_AVATAR : avatar} />
+        <AvatarImage avatarKey={url ? DEFAULT_AVATAR : avatar} />
       )}
     </span>
   );
@@ -170,7 +171,7 @@ function ProfileEditor({ profile, first, hasPin, onDone }: { profile: Profile | 
   const [linkState, setLinkState] = useState<"idle" | "invalid" | "loading" | "ok" | "error">(startsWithLink ? "loading" : "idle");
   const linkBlocks = isAvatarUrl(avatar) && linkState !== "ok";
   const currentCat: AvatarCategory | null = isAvatarUrl(avatar) ? null : avatarCategory(avatarArt(avatar));
-  const [cat, setCat] = useState<AvatarCategory>(currentCat ?? "classics");
+  const [cat, setCat] = useState<AvatarCategory>(currentCat ?? AVATAR_CATEGORIES[0].id);
 
   const onLink = (raw: string) => {
     const v = raw.trim().slice(0, AVATAR_URL_MAX + 1);
@@ -240,7 +241,7 @@ function ProfileEditor({ profile, first, hasPin, onDone }: { profile: Profile | 
   return (
     <form className="profile-editor" onSubmit={(e) => { e.preventDefault(); if (canSave) void save(); }}>
       <h1>{profile ? "Edit profile" : first ? "Create your profile" : "Add a profile"}</h1>
-      {first && <p className="auth-p">Each profile has its own library, watchlist, progress, addons and Trakt/TMDB connections. Settings are shared by the whole account.</p>}
+      {first && <p className="auth-p">Each profile has its own library, watchlist, progress, addons and {FEATURES.trakt ? "Trakt/TMDB connections" : "TMDB key"}. Settings are shared by the whole account.</p>}
       <div className="profile-editor-row">
         {isAvatarUrl(avatar) ? (
           <span className="avatar avatar-art avatar-preview" style={{ width: 120, height: 120 }} aria-label="Image preview">
@@ -318,8 +319,12 @@ function ProfileEditor({ profile, first, hasPin, onDone }: { profile: Profile | 
           <label className="profile-option">
             <input type="checkbox" checked={copyConnections} onChange={(e) => setCopyConnections(e.target.checked)} />
             <span>
-              Copy Trakt and TMDB connections from {primary.name}
-              <small>Copies {primary.name}'s Trakt sign-in and TMDB key on this computer only. Both profiles then use the same Trakt account.</small>
+              {FEATURES.trakt ? `Copy Trakt and TMDB connections from ${primary.name}` : `Copy the TMDB key from ${primary.name}`}
+              <small>
+                {FEATURES.trakt
+                  ? `Copies ${primary.name}'s Trakt sign-in and TMDB key on this computer only. Both profiles then use the same Trakt account.`
+                  : `Copies ${primary.name}'s TMDB key on this computer only.`}
+              </small>
             </span>
           </label>
           {needPrimaryPin && (
@@ -430,7 +435,7 @@ export function ProfileSwitcher() {
         {active ? <Avatar avatar={active.avatar} size={32} /> : <UserRound size={19} />}
       </button>
       {open && (
-        <div className="profile-menu" role="menu">
+        <div className="profile-menu" role="menu" data-nav-scope>
           {active && (
             <div className="profile-menu-head">
               <Avatar avatar={active.avatar} size={36} />

@@ -131,8 +131,9 @@ async fn attempt(bin: &PathBuf, yt_id: &str) -> Result<TrailerStream, String> {
     Err(last)
 }
 
-/// Resolves a YouTube trailer id to playable stream URLs. Uses Kinly's own, auto-updated yt-dlp
-/// (see ytdlp.rs), else an installed one. Errors with [`MISSING`] when there is none and
+/// Resolves a YouTube trailer id to playable stream URLs. Uses a recent copy of Kinly's own
+/// yt-dlp (see ytdlp.rs), else the bundled or an installed one, and downloads a new copy only when
+/// none exists or the one tried fails. Errors with [`MISSING`] when there is none and
 /// [`UNAVAILABLE`] once it has kept failing in this session.
 #[tauri::command]
 pub async fn trailer_resolve(paths: tauri::State<'_, crate::Paths>, yt_id: String) -> Result<TrailerStream, String> {
@@ -143,16 +144,24 @@ pub async fn trailer_resolve(paths: tauri::State<'_, crate::Paths>, yt_id: Strin
         return Err(UNAVAILABLE.into());
     }
     let data = paths.data.clone();
-    let managed = super::ytdlp::ensure(&data, super::ytdlp::STALE)
-        .await
-        .inspect_err(|e| crate::log_warn!("trailer", "{e}"))
-        .ok();
-    let bin = managed.clone().or_else(find_ytdlp).ok_or_else(|| MISSING.to_string())?;
-    let mut result = attempt(&bin, &yt_id).await;
-    // YouTube may have changed since the last update: refresh a not-quite-new copy and retry once.
-    if result.is_err() && managed.as_ref().and_then(|m| super::ytdlp::age(m)).is_some_and(|a| a > super::ytdlp::RETRY_AGE) {
-        if let Ok(fresh) = super::ytdlp::ensure(&data, super::ytdlp::RETRY_AGE).await {
-            result = attempt(&fresh, &yt_id).await;
+    // A recent managed copy first, then the bundled or installed one. A new copy is downloaded
+    // only when there is none or the one tried fails (YouTube may have changed), so a fresh
+    // install does not fetch and run a program it already ships.
+    let managed = super::ytdlp::managed_path(&data);
+    let first = super::ytdlp::age(&managed).is_some_and(|a| a < super::ytdlp::STALE).then(|| managed.clone()).or_else(find_ytdlp);
+    let mut result = match &first {
+        Some(bin) => attempt(bin, &yt_id).await,
+        None => Err(MISSING.to_string()),
+    };
+    if result.is_err() {
+        let max_age = if first.is_some() { super::ytdlp::RETRY_AGE } else { super::ytdlp::STALE };
+        match super::ytdlp::ensure(&data, max_age).await {
+            // Retry unless `ensure` handed back the same copy that just failed, unchanged.
+            Ok(fresh) if first.as_ref() != Some(&fresh) || super::ytdlp::age(&fresh).is_some_and(|a| a < Duration::from_secs(120)) => {
+                result = attempt(&fresh, &yt_id).await;
+            }
+            Ok(_) => {}
+            Err(e) => crate::log_warn!("trailer", "{e}"),
         }
     }
     match result {

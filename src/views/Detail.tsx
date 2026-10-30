@@ -1,5 +1,6 @@
-import { memo, startTransition, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type SyntheticEvent } from "react";
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type SyntheticEvent } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { trapDialogFocus } from "../lib/spatialNav";
 import {
   AlertTriangle, ArrowLeft, AudioLines, Check, CheckCheck, Clapperboard, Cpu, Disc3, Download, ExternalLink, Eye, Globe, HardDrive, Play, Plus, Sparkles,
   SunMedium, Tv, Video as VideoIcon, X,
@@ -425,10 +426,13 @@ function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; vid
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  const sheet = useRef<HTMLElement>(null);
+  useEffect(() => (sheet.current ? trapDialogFocus(sheet.current) : undefined), []);
 
   const resume = settings.playback.resume;
   const play = useCallback((rs: RankedStream) => start(buildPlayRequest(meta, rs, video, resume)), [start, meta, video, resume]);
   const external = settings.library.downloadExternally;
+  const downloadDir = settings.library.downloadDir;
   const setExternal = (v: boolean) => update((s) => ({ ...s, library: { ...s.library, downloadExternally: v } }));
   const download = useCallback(
     (rs: RankedStream) => {
@@ -442,11 +446,15 @@ function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; vid
           .catch((e) => toast(`Couldn't open your browser: ${errorMessage(e)}`, "error"));
         return;
       }
-      downloadStart(url, downloadName(meta, rs, video), rs.stream.behaviorHints?.proxyHeaders?.request)
+      downloadStart(url, downloadName(meta, rs, video), {
+        headers: rs.stream.behaviorHints?.proxyHeaders?.request,
+        dir: downloadDir,
+        info: { title: meta.name, metaId: meta.id, type: meta.type, season: video?.season, episode: video?.episode },
+      })
         .then((p) => toast(`Downloading ${p.name}. Follow it on the Downloads page.`))
         .catch((e) => toast(`Couldn't download: ${errorMessage(e)}`, "error"));
     },
-    [toast, external, meta, video],
+    [toast, external, meta, video, downloadDir],
   );
   const counts = useMemo(() => {
     const c = new Map<QualityGroup, number>();
@@ -462,7 +470,7 @@ function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; vid
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <aside className="sheet" role="dialog" aria-label="Sources" onClick={(e) => e.stopPropagation()}>
+      <aside ref={sheet} className="sheet" role="dialog" aria-modal="true" aria-label="Sources" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <div style={{ minWidth: 0 }}>
             <div className="sheet-kicker">{mode === "download" ? "Download a source" : "Choose a source"}</div>
@@ -485,7 +493,7 @@ function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; vid
                 <p className="faint sheet-note">
                   {external
                     ? <>The link opens in your browser and is copied, so your download manager can take it <PrismHint />.</>
-                    : "Kinly saves the video to your Downloads folder. Follow its progress on the Downloads page."}{" "}
+                    : "Kinly saves the video to your download folder (Settings → Library). Follow its progress on the Downloads page."}{" "}
                   Sources without a direct link can only be streamed.
                 </p>
               </div>

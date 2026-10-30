@@ -1,9 +1,10 @@
 //! Kinly's own copy of yt-dlp, so trailers work without anyone installing it by hand.
 //!
-//! YouTube changes often and old yt-dlp releases stop working, so Kinly keeps a copy in its data
-//! folder (`<data>/tools/`) and refreshes it when it is a week old, or sooner when it fails. The
+//! YouTube changes often and old yt-dlp releases stop working, so Kinly can keep a copy in its data
+//! folder (`<data>/tools/`), used while it is less than a week old and refreshed when it fails. The
 //! file comes from yt-dlp's official GitHub releases and is checked against the SHA-256 list
-//! published with the same release before it is used. It is only fetched when a trailer is opened.
+//! published with the same release before it is used. It is only fetched when a trailer is opened
+//! and no recent copy, bundled copy or installed yt-dlp works (see `trailer_resolve`).
 
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};

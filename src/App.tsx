@@ -7,6 +7,7 @@ import { localRequest, useDownloadNotifications } from "./views/Downloads";
 import { Maximize, Minimize, Puzzle, Search as SearchIcon, Settings as SettingsIcon } from "lucide-react";
 import { useApp, type Route } from "./state";
 import { loadCaps } from "./lib/caps";
+import { installSpatialNav, markFocus, restoreFocus, usingKeyboard, type FocusMark } from "./lib/spatialNav";
 import Home from "./views/Home";
 import Browse from "./views/Browse";
 import Search from "./views/Search";
@@ -27,7 +28,7 @@ const NAV: { label: string; route: Route; match: Route["name"][]; type?: string 
 ];
 
 export default function App() {
-  const { route, navigate, settings } = useApp();
+  const { route, navigate, back, canGoBack, settings } = useApp();
   const [scrolled, setScrolled] = useState(false);
   const scrolledRef = useRef(false);
   useDownloadNotifications();
@@ -92,6 +93,40 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [route.name, navigate]);
 
+  // Arrow keys / D-pad, Enter and Back for the whole UI (the player has its own keys).
+  const nav = useRef({ route, canGoBack, back });
+  nav.current = { route, canGoBack, back };
+  useEffect(
+    () =>
+      installSpatialNav({
+        enabled: () => nav.current.route.name !== "player",
+        onBack: () => {
+          if (!nav.current.canGoBack) return false;
+          nav.current.back();
+          return true;
+        },
+      }),
+    [],
+  );
+
+  // Back returns focus to the card or button you left from (for keyboard and remote users).
+  const routeKey = JSON.stringify(route);
+  const marks = useRef(new Map<string, FocusMark>());
+  useEffect(() => {
+    const onFocus = (e: FocusEvent) => {
+      const m = markFocus(e.target as Element);
+      if (m) marks.current.set(routeKey, m);
+    };
+    document.addEventListener("focusin", onFocus);
+    const mark = marks.current.get(routeKey);
+    const cancel = mark && usingKeyboard() ? restoreFocus(mark) : undefined;
+    return () => {
+      document.removeEventListener("focusin", onFocus);
+      cancel?.();
+      if (marks.current.size > 30) marks.current.delete(marks.current.keys().next().value!);
+    };
+  }, [routeKey]);
+
   if (route.name === "player") return <Player key={route.req.videoId + route.req.url} req={route.req} />;
 
   const isActive = (n: (typeof NAV)[number]) => n.match.includes(route.name) && (!n.type || (route.name === "browse" && route.type === n.type));
@@ -125,7 +160,7 @@ export default function App() {
           <ProfileSwitcher />
         </div>
       </header>
-      <main className="main" key={JSON.stringify(route)} onScroll={onMainScroll}>
+      <main className="main" key={routeKey} onScroll={onMainScroll}>
         {route.name === "home" && <Home />}
         {route.name === "browse" && <Browse type={route.type} />}
         {route.name === "search" && <Search initial={route.query} />}

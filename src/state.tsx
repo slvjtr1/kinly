@@ -26,6 +26,8 @@ type Ctx = {
   /** `replace` swaps the current view instead of stacking on top of it. */
   navigate: (r: Route, opts?: { replace?: boolean }) => void;
   back: () => void;
+  /** False on a root view (Home, Library, …), where Back has nothing to return to. */
+  canGoBack: boolean;
   toast: (text: string, kind?: Toast["kind"]) => void;
 };
 
@@ -80,6 +82,7 @@ export function AppProvider({ children, initial }: { children: ReactNode; initia
     el.dataset.theme = settings.appearance.theme;
     el.dataset.reduceMotion = String(settings.appearance.reduceMotion);
     el.dataset.perf = resolvePerformanceMode(settings.appearance.performanceMode, caps);
+    el.dataset.tv = String(settings.appearance.tvMode);
     el.style.zoom = String(settings.appearance.uiScale);
   }, [settings.appearance, caps]);
 
@@ -101,7 +104,8 @@ export function AppProvider({ children, initial }: { children: ReactNode; initia
 
   // Memoised so a toast appearing or disappearing does not re-render every consumer.
   const route = stack[stack.length - 1];
-  const value = useMemo(() => ({ settings, update, route, navigate, back, toast }), [settings, update, route, navigate, back, toast]);
+  const canGoBack = stack.length > 1;
+  const value = useMemo(() => ({ settings, update, route, navigate, back, canGoBack, toast }), [settings, update, route, navigate, back, canGoBack, toast]);
   return (
     <AppCtx.Provider value={value}>
       {children}

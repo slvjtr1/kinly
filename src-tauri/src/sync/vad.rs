@@ -9,7 +9,9 @@
 //! in the 200-3400 Hz voice band ffmpeg delivers), which removes steady music or
 //! noise beds the VAD hears as voice and keeps mono mixes usable.
 //!
-//! `hysteresis` is adapted from Compass (src-tauri/src/subsync/vad.rs @ a4adad6, MIT).
+//! `hysteresis`, `VadConfig` and the hysteresis tests are adapted from Compass
+//! (src-tauri/src/subsync/vad.rs @ a4adad6, Copyright (c) 2026 Compass, MIT; see
+//! THIRD_PARTY_NOTICES.md).
 
 pub const SR: u32 = 16000;
 const FRAME_MS: f32 = 10.0;

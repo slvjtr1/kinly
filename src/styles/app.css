@@ -1990,3 +1990,119 @@ html[data-perf="performance"] *:not(.spinner):not(.skeleton):not(.skeleton-row):
   color: var(--accent-ink);
   background: linear-gradient(120deg, var(--accent), var(--accent-2));
 }
+
+/* Search box and recent searches */
+.search-box {
+  position: relative;
+  max-width: 640px;
+  margin-bottom: 26px;
+}
+.search-box .input {
+  width: 100%;
+  height: 44px;
+  padding-left: 42px;
+  padding-right: 44px;
+  font-size: 15px;
+}
+.search-box-icon {
+  position: absolute;
+  left: 14px;
+  top: 13px;
+  pointer-events: none;
+}
+.search-box-clear {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+}
+.search-history {
+  max-width: 640px;
+}
+.search-history-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.search-history-title .btn {
+  margin-left: auto;
+}
+.search-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.search-history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+}
+.search-history-item:hover {
+  background: var(--hover);
+}
+.search-history-query {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.search-history-query span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Keyboard and remote focus (src/lib/spatialNav.ts). Arrow-key moves scroll the focused element
+   into view; the margins keep it clear of the top bar and the row edges. */
+.main :focus-visible {
+  scroll-margin: 96px 24px 24px;
+}
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.topnav-item:focus-visible,
+.search-pill:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-2) 22%, transparent);
+}
+
+/* TV mode (Settings → Appearance): bolder focus and larger targets for viewing from a distance. */
+:root[data-tv="true"] :focus-visible {
+  outline-width: 4px;
+  outline-offset: 4px;
+}
+:root[data-tv="true"] .card:focus-visible .poster,
+:root[data-tv="true"] .wide-card:focus-visible .thumb,
+:root[data-tv="true"] .episode-card:focus-visible .thumb {
+  outline-width: 4px;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-2) 25%, transparent);
+}
+:root[data-tv="true"] .card:focus-visible .poster {
+  transform: translateY(-6px) scale(1.04);
+}
+:root[data-tv="true"] .card:focus-visible .card-title {
+  color: var(--accent-2);
+}
+:root[data-tv="true"] .btn,
+:root[data-tv="true"] .topnav-item {
+  min-height: 44px;
+}
+:root[data-tv="true"] .icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+}

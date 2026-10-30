@@ -1,13 +1,14 @@
-//! In-app downloads: a source's direct link is streamed into the user's download folder as
-//! `<name>.part` and renamed when complete, so the Downloads page and its watcher (local.rs) pick
-//! it up like any other finished download. Progress is emitted as `downloads:progress`.
+//! In-app downloads. A source's direct link is streamed to `<folder>/<name>.part` and renamed when
+//! complete. Every download Kinly starts is recorded in `downloads.json` (app data folder), which
+//! is what the Downloads page manages: Kinly only ever deletes files listed there, by record id,
+//! never a path handed over by the UI. Progress is emitted as `downloads:progress` (a Record).
 
-use serde::Serialize;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::io::AsyncWriteExt;
 
@@ -16,49 +17,290 @@ const VIDEO_EXTS: &[&str] = &["mkv", "mp4", "m4v", "avi", "mov", "webm", "ts", "
 const CHUNK_TIMEOUT: Duration = Duration::from_secs(60);
 const EMIT_EVERY: Duration = Duration::from_millis(400);
 const MAX_NAME: usize = 150;
+const MAX_RECORDS: usize = 2000;
 
-#[derive(Serialize, Clone, Debug)]
+pub const RUNNING: &str = "running";
+pub const DONE: &str = "done";
+pub const FAILED: &str = "failed";
+/// Kinly closed (or crashed) before the download finished; its partial file was removed.
+pub const INTERRUPTED: &str = "interrupted";
+/// Finished, but the file is no longer there (moved or deleted outside Kinly). Never stored.
+pub const MISSING: &str = "missing";
+
+/// What the download is, for the Downloads page. All optional; shown as given.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct Progress {
+pub struct Info {
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub meta_id: Option<String>,
+    #[serde(default, rename = "type")]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub season: Option<u32>,
+    #[serde(default)]
+    pub episode: Option<u32>,
+}
+
+impl Info {
+    fn bounded(self) -> Self {
+        let cut = |s: Option<String>, n: usize| s.map(|s| s.chars().take(n).collect::<String>()).filter(|s| !s.trim().is_empty());
+        Info { title: cut(self.title, 200), meta_id: cut(self.meta_id, 200), kind: cut(self.kind, 20), season: self.season, episode: self.episode }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Record {
     pub id: u64,
+    /// File name of the finished file.
     pub name: String,
+    /// Full path of the finished file (the partial file is this plus `.part`).
+    pub path: String,
     pub received: u64,
     /// From Content-Length; 0 when the server does not say.
     pub total: u64,
-    /// "running", "done", "failed" or "cancelled".
-    pub state: &'static str,
+    pub state: String,
+    #[serde(default)]
     pub error: Option<String>,
+    /// Unix seconds.
+    pub created: u64,
+    #[serde(default)]
+    pub finished: Option<u64>,
+    #[serde(default)]
+    pub info: Info,
 }
 
-struct Job {
-    progress: Progress,
-    cancel: Arc<AtomicBool>,
-    part: PathBuf,
+#[derive(Serialize, Deserialize, Default)]
+struct Db {
+    v: u32,
+    records: Vec<Record>,
 }
 
-/// Running and failed downloads. Finished and cancelled ones are dropped (finished files are
-/// listed from disk); failed ones stay until the user dismisses them.
 #[derive(Default)]
+struct Inner {
+    records: BTreeMap<u64, Record>,
+    cancels: HashMap<u64, Arc<AtomicBool>>,
+}
+
+/// The download records, kept in memory and saved on every state change.
 pub struct Downloader {
-    jobs: Mutex<HashMap<u64, Job>>,
+    db: Option<PathBuf>,
+    inner: Mutex<Inner>,
     next: AtomicU64,
 }
 
+fn now_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+fn part_of(p: &Path) -> PathBuf {
+    let mut s = p.as_os_str().to_os_string();
+    s.push(".part");
+    PathBuf::from(s)
+}
+
 impl Downloader {
-    fn update(&self, p: &Progress) {
-        if let Ok(mut jobs) = self.jobs.lock() {
-            match p.state {
-                "done" | "cancelled" => {
-                    jobs.remove(&p.id);
-                }
-                _ => {
-                    if let Some(j) = jobs.get_mut(&p.id) {
-                        j.progress = p.clone();
-                    }
-                }
+    /// Loads `db` (a missing or unreadable file starts empty; an unreadable one is kept aside).
+    /// Downloads that were running when Kinly last stopped become "interrupted" and their partial
+    /// files are removed.
+    pub fn load(db: PathBuf) -> Self {
+        let parsed: Option<Db> = std::fs::read(&db).ok().and_then(|b| match serde_json::from_slice(&b) {
+            Ok(d) => Some(d),
+            Err(e) => {
+                let aside = db.with_extension(format!("corrupt-{}.json", now_secs()));
+                log_warn!("downloads", "downloads.json is unreadable ({e}); moved to {}", aside.display());
+                let _ = std::fs::rename(&db, &aside);
+                None
+            }
+        });
+        let mut inner = Inner::default();
+        let mut changed = false;
+        for mut r in parsed.map(|d| d.records).unwrap_or_default() {
+            if r.state == RUNNING {
+                let _ = std::fs::remove_file(part_of(Path::new(&r.path)));
+                r.state = INTERRUPTED.into();
+                r.error = Some("Kinly closed before the download finished.".into());
+                changed = true;
+            }
+            inner.records.insert(r.id, r);
+        }
+        let next = inner.records.keys().next_back().copied().unwrap_or(0);
+        let d = Downloader { db: Some(db), inner: Mutex::new(inner), next: AtomicU64::new(next) };
+        if changed {
+            if let Ok(i) = d.inner.lock() {
+                d.save(&i);
             }
         }
+        d
     }
+
+    /// Not persisted (tests).
+    pub fn in_memory() -> Self {
+        Downloader { db: None, inner: Mutex::new(Inner::default()), next: AtomicU64::new(0) }
+    }
+
+    fn save(&self, inner: &Inner) {
+        let Some(db) = &self.db else { return };
+        let doc = Db { v: 1, records: inner.records.values().cloned().collect() };
+        match serde_json::to_vec_pretty(&doc) {
+            Ok(bytes) => {
+                if let Err(e) = crate::store::atomic_write(db, &bytes, true) {
+                    log_warn!("downloads", "could not save downloads.json: {e}");
+                }
+            }
+            Err(e) => log_warn!("downloads", "could not encode downloads.json: {e}"),
+        }
+    }
+
+    fn insert(&self, r: Record, cancel: Arc<AtomicBool>) {
+        if let Ok(mut i) = self.inner.lock() {
+            i.cancels.insert(r.id, cancel);
+            i.records.insert(r.id, r);
+            // Oldest finished records go first if the list ever gets very long.
+            while i.records.len() > MAX_RECORDS {
+                let Some(old) = i.records.iter().find(|(_, r)| r.state != RUNNING).map(|(k, _)| *k) else { break };
+                i.records.remove(&old);
+            }
+            self.save(&i);
+        }
+    }
+
+    /// Progress only: kept in memory, not written to disk.
+    fn set_received(&self, id: u64, received: u64) -> Option<Record> {
+        let mut i = self.inner.lock().ok()?;
+        let r = i.records.get_mut(&id)?;
+        r.received = received;
+        Some(r.clone())
+    }
+
+    /// Final state of a download. `None` removes the record (cancelled).
+    fn finish(&self, id: u64, outcome: Option<Result<u64, String>>) -> Option<Record> {
+        let mut i = self.inner.lock().ok()?;
+        i.cancels.remove(&id);
+        let out = match outcome {
+            None => i.records.remove(&id).map(|mut r| {
+                r.state = "cancelled".into();
+                r
+            }),
+            Some(res) => {
+                let r = i.records.get_mut(&id)?;
+                match res {
+                    Ok(received) => {
+                        r.received = received;
+                        r.state = DONE.into();
+                        r.error = None;
+                    }
+                    Err(e) => {
+                        r.state = FAILED.into();
+                        r.error = Some(e);
+                    }
+                }
+                r.finished = Some(now_secs());
+                Some(r.clone())
+            }
+        };
+        self.save(&i);
+        out
+    }
+
+    /// All records, newest first; finished files that are gone are reported as "missing".
+    pub fn list(&self) -> Vec<Record> {
+        let Ok(i) = self.inner.lock() else { return vec![] };
+        i.records
+            .values()
+            .rev()
+            .map(|r| {
+                let mut r = r.clone();
+                if r.state == DONE && !Path::new(&r.path).is_file() {
+                    r.state = MISSING.into();
+                }
+                r
+            })
+            .collect()
+    }
+
+    /// True when `path` is (or will be) a file Kinly downloaded.
+    pub fn is_managed(&self, path: &str) -> bool {
+        self.inner.lock().map(|i| i.records.values().any(|r| same_path(&r.path, path))).unwrap_or(false)
+    }
+
+    /// Cancels a running download; removes the record of one that failed or was interrupted.
+    pub fn cancel(&self, id: u64) {
+        let Ok(mut i) = self.inner.lock() else { return };
+        let state = i.records.get(&id).map(|r| r.state.clone());
+        match state.as_deref() {
+            Some(RUNNING) => {
+                if let Some(c) = i.cancels.get(&id) {
+                    c.store(true, Ordering::Relaxed);
+                }
+            }
+            Some(FAILED) | Some(INTERRUPTED) => {
+                i.records.remove(&id);
+                self.save(&i);
+            }
+            _ => {}
+        }
+    }
+
+    /// Deletes a finished (or missing) download's file and its record. Refuses running downloads
+    /// and the file that is playing. Only the recorded path is touched, and only if it is a video
+    /// file; a file that is already gone just loses its record.
+    pub fn delete(&self, id: u64, playing: Option<&str>) -> Result<(), String> {
+        let mut i = self.inner.lock().map_err(|_| "Downloads are busy. Try again.".to_string())?;
+        let r = i.records.get(&id).cloned().ok_or("This download is no longer listed.")?;
+        if r.state == RUNNING {
+            return Err("This download is still running. Cancel it first.".into());
+        }
+        if playing.is_some_and(|p| same_path(p, &r.path)) {
+            return Err("This video is playing. Close the player first.".into());
+        }
+        let path = PathBuf::from(&r.path);
+        if !path.is_absolute() || !is_video(&path) || r.path.contains('\0') {
+            return Err("Kinly won't delete this file because its recorded location is not valid.".into());
+        }
+        match std::fs::symlink_metadata(&path) {
+            Ok(m) if m.is_dir() => return Err("Kinly won't delete a folder.".into()),
+            Ok(_) => std::fs::remove_file(&path).map_err(|e| format!("Couldn't delete the file: {e}"))?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(format!("Couldn't reach the file: {e}")),
+        }
+        let _ = std::fs::remove_file(part_of(&path));
+        i.records.remove(&id);
+        self.save(&i);
+        log_info!("downloads", "deleted {}", r.name);
+        Ok(())
+    }
+
+    /// Stops running downloads when the app exits and removes their partial files (best effort:
+    /// the tasks don't get to clean up after the runtime stops). They load as "interrupted".
+    pub fn cancel_all(&self) {
+        let Ok(i) = self.inner.lock() else { return };
+        for r in i.records.values().filter(|r| r.state == RUNNING) {
+            if let Some(c) = i.cancels.get(&r.id) {
+                c.store(true, Ordering::Relaxed);
+            }
+            let _ = std::fs::remove_file(part_of(Path::new(&r.path)));
+        }
+    }
+}
+
+/// Path equality as the OS sees it: case-insensitive on Windows, `file://` prefix ignored.
+pub fn same_path(a: &str, b: &str) -> bool {
+    let norm = |s: &str| {
+        let s = s.strip_prefix("file://").unwrap_or(s);
+        if cfg!(windows) {
+            s.replace('/', "\\").to_lowercase()
+        } else {
+            s.to_string()
+        }
+    };
+    norm(a) == norm(b)
+}
+
+fn is_video(p: &Path) -> bool {
+    p.file_name().and_then(|n| video_ext(&n.to_string_lossy())).is_some()
 }
 
 /// A file name that is safe on every platform: no separators, reserved characters or control
@@ -114,12 +356,6 @@ pub fn unique_path(dir: &Path, stem: &str, ext: &str) -> PathBuf {
     (2..1000).map(|n| dir.join(format!("{stem} ({n}).{ext}"))).find(|p| free(p)).unwrap_or(first)
 }
 
-fn part_of(p: &Path) -> PathBuf {
-    let mut s = p.as_os_str().to_os_string();
-    s.push(".part");
-    PathBuf::from(s)
-}
-
 /// Strips a known video extension so it is not doubled when the final one is added.
 fn stem_of(name: &str) -> &str {
     match video_ext(name) {
@@ -138,16 +374,76 @@ fn header_ok(k: &str, v: &str) -> bool {
         && !matches!(k.to_ascii_lowercase().as_str(), "host" | "content-length" | "transfer-encoding" | "connection")
 }
 
+/// The default download folder: the platform's Videos folder (the Videos known folder on Windows,
+/// XDG_VIDEOS_DIR on Linux), else `~/Videos`, else the Downloads folder.
+pub fn default_dir() -> Option<PathBuf> {
+    if let Some(d) = dirs::video_dir().filter(|d| d.is_dir()) {
+        return Some(d);
+    }
+    #[cfg(target_os = "linux")]
+    if let Ok(out) = std::process::Command::new("xdg-user-dir").arg("VIDEOS").output() {
+        let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        let p = PathBuf::from(&s);
+        if !s.is_empty() && p.is_dir() && Some(p.as_path()) != dirs::home_dir().as_deref() {
+            return Some(p);
+        }
+    }
+    dirs::home_dir().map(|h| h.join("Videos")).or_else(crate::local::download_dir)
+}
+
+/// Makes sure `dir` is an absolute folder Kinly can write to (creating it if needed).
+pub fn ensure_writable(dir: &Path) -> Result<(), String> {
+    if !dir.is_absolute() {
+        return Err("Choose a full folder path.".into());
+    }
+    if dir.exists() && !dir.is_dir() {
+        return Err("That location is a file, not a folder.".into());
+    }
+    std::fs::create_dir_all(dir).map_err(|e| format!("Kinly can't create this folder: {e}"))?;
+    let probe = dir.join(format!(".kinly-write-test-{}", std::process::id()));
+    std::fs::write(&probe, b"").map_err(|e| format!("Kinly can't write to this folder: {e}"))?;
+    let _ = std::fs::remove_file(&probe);
+    Ok(())
+}
+
+fn resolve_dir(dir: Option<String>) -> Result<PathBuf, String> {
+    let dir = match dir.map(|d| d.trim().to_string()).filter(|d| !d.is_empty()) {
+        Some(d) => PathBuf::from(d),
+        None => default_dir().ok_or("No Videos or Downloads folder was found. Choose a download folder in Settings → Library.")?,
+    };
+    ensure_writable(&dir)?;
+    Ok(dir)
+}
+
 #[tauri::command]
+pub fn download_default_dir() -> Option<String> {
+    default_dir().map(|d| d.display().to_string())
+}
+
+/// Checks a folder chosen as the download location; returns it as Kinly will use it.
+#[tauri::command]
+pub async fn download_dir_check(dir: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let p = PathBuf::from(dir.trim());
+        ensure_writable(&p).map(|_| p.display().to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn download_start(
     app: AppHandle,
     state: State<'_, Downloader>,
     url: String,
     name: String,
     headers: Option<HashMap<String, String>>,
-) -> Result<Progress, String> {
+    dir: Option<String>,
+    info: Option<Info>,
+) -> Result<Record, String> {
     let parsed = crate::net::check_url(&url)?;
-    let dir = crate::local::download_dir().ok_or("No Downloads folder was found on this computer.")?;
+    let dir = tokio::task::spawn_blocking(move || resolve_dir(dir)).await.map_err(|e| e.to_string())??;
     let mut req = crate::net::client().get(parsed.clone());
     for (k, v) in headers.unwrap_or_default().into_iter().filter(|(k, v)| header_ok(k, v)).take(16) {
         req = req.header(k.trim(), v);
@@ -162,46 +458,54 @@ pub async fn download_start(
     }
     let name = sanitize_name(&name);
     let path = unique_path(&dir, stem_of(&name), pick_ext(&name, parsed.path(), &ctype));
-    let file_name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let part = part_of(&path);
     let file = tokio::fs::File::create(&part).await.map_err(|e| format!("Could not create the file: {e}"))?;
 
     let id = state.next.fetch_add(1, Ordering::Relaxed) + 1;
     let cancel = Arc::new(AtomicBool::new(false));
-    let first = Progress { id, name: file_name, received: 0, total: resp.content_length().unwrap_or(0), state: "running", error: None };
-    if let Ok(mut jobs) = state.jobs.lock() {
-        jobs.insert(id, Job { progress: first.clone(), cancel: cancel.clone(), part: part.clone() });
-    }
+    let record = Record {
+        id,
+        name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+        path: path.display().to_string(),
+        received: 0,
+        total: resp.content_length().unwrap_or(0),
+        state: RUNNING.into(),
+        error: None,
+        created: now_secs(),
+        finished: None,
+        info: info.unwrap_or_default().bounded(),
+    };
+    state.insert(record.clone(), cancel.clone());
     log_info!("downloads", "start {}: {}", id, crate::logging::redact(&url));
 
-    let mut p = first.clone();
     tauri::async_runtime::spawn(async move {
-        let result = copy(resp, file, &mut p, &cancel, &app).await;
+        let result = copy(resp, file, id, &cancel, &app).await;
         let outcome = match result {
-            Ok(()) => tokio::fs::rename(&part, &path).await.map_err(|e| format!("Could not finish the file: {e}")),
+            Ok(n) => tokio::fs::rename(&part, &path).await.map(|_| n).map_err(|e| format!("Could not finish the file: {e}")),
             Err(e) => Err(e),
         };
-        match outcome {
-            Ok(()) => p.state = "done",
-            Err(e) => {
-                let _ = tokio::fs::remove_file(&part).await;
-                if cancel.load(Ordering::Relaxed) {
-                    p.state = "cancelled";
-                } else {
-                    log_warn!("downloads", "{} failed: {}", p.id, e);
-                    p.state = "failed";
-                    p.error = Some(e);
-                }
-            }
+        if outcome.is_err() {
+            let _ = tokio::fs::remove_file(&part).await;
         }
-        app.state::<Downloader>().update(&p);
-        let _ = app.emit("downloads:progress", p.clone());
+        let outcome = match outcome {
+            Err(_) if cancel.load(Ordering::Relaxed) => None,
+            Err(e) => {
+                log_warn!("downloads", "{id} failed: {e}");
+                Some(Err(e))
+            }
+            Ok(n) => Some(Ok(n)),
+        };
+        if let Some(r) = app.state::<Downloader>().finish(id, outcome) {
+            let _ = app.emit("downloads:progress", r);
+        }
     });
-    Ok(first)
+    Ok(record)
 }
 
-async fn copy(mut resp: reqwest::Response, file: tokio::fs::File, p: &mut Progress, cancel: &AtomicBool, app: &AppHandle) -> Result<(), String> {
+async fn copy(mut resp: reqwest::Response, file: tokio::fs::File, id: u64, cancel: &AtomicBool, app: &AppHandle) -> Result<u64, String> {
+    let total = resp.content_length().unwrap_or(0);
     let mut out = tokio::io::BufWriter::with_capacity(1 << 20, file);
+    let mut received = 0u64;
     let mut last = Instant::now();
     loop {
         if cancel.load(Ordering::Relaxed) {
@@ -213,59 +517,69 @@ async fn copy(mut resp: reqwest::Response, file: tokio::fs::File, p: &mut Progre
             .map_err(|e| format!("The connection broke: {}", crate::logging::redact(&e.to_string())))?;
         let Some(chunk) = chunk else { break };
         out.write_all(&chunk).await.map_err(|e| format!("Could not write the file: {e}"))?;
-        p.received += chunk.len() as u64;
+        received += chunk.len() as u64;
         if last.elapsed() >= EMIT_EVERY {
             last = Instant::now();
-            app.state::<Downloader>().update(p);
-            let _ = app.emit("downloads:progress", p.clone());
+            if let Some(r) = app.state::<Downloader>().set_received(id, received) {
+                let _ = app.emit("downloads:progress", r);
+            }
         }
     }
     out.flush().await.map_err(|e| format!("Could not write the file: {e}"))?;
-    if p.total > 0 && p.received < p.total {
+    if total > 0 && received < total {
         return Err("The download ended early.".into());
     }
-    Ok(())
+    Ok(received)
 }
 
-/// Cancels a running download, or dismisses a failed one.
+/// Cancels a running download, or dismisses a failed or interrupted one.
 #[tauri::command]
 pub fn download_cancel(state: State<'_, Downloader>, id: u64) {
-    let Ok(mut jobs) = state.jobs.lock() else { return };
-    let running = jobs.get(&id).map(|j| j.progress.state == "running");
-    match running {
-        Some(true) => {
-            if let Some(j) = jobs.get(&id) {
-                j.cancel.store(true, Ordering::Relaxed);
-            }
-        }
-        Some(false) => {
-            jobs.remove(&id);
-        }
-        None => {}
-    }
+    state.cancel(id);
 }
 
-/// Running and failed downloads, oldest first (for pages opened after a download started).
+/// Every download Kinly has made, newest first.
 #[tauri::command]
-pub fn downloads_active(state: State<'_, Downloader>) -> Vec<Progress> {
-    let mut v: Vec<Progress> = state.jobs.lock().map(|j| j.values().map(|j| j.progress.clone()).collect()).unwrap_or_default();
-    v.sort_by_key(|p| p.id);
-    v
+pub fn downloads_managed(state: State<'_, Downloader>) -> Vec<Record> {
+    state.list()
 }
 
-/// Stops running downloads when the app exits and removes their .part files (best effort: the
-/// tasks don't get to clean up after the runtime stops).
-pub fn cancel_all(state: &Downloader) {
-    let Ok(jobs) = state.jobs.lock() else { return };
-    for j in jobs.values().filter(|j| j.progress.state == "running") {
-        j.cancel.store(true, Ordering::Relaxed);
-        let _ = std::fs::remove_file(&j.part);
-    }
+/// Deletes a finished download's file (see `Downloader::delete`).
+#[tauri::command]
+pub async fn download_delete(app: AppHandle, id: u64) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let playing = crate::player::playing_local();
+        app.state::<Downloader>().delete(id, playing.as_deref())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn tmp(tag: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("kinly-dl-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    fn rec(id: u64, path: &Path, state: &str) -> Record {
+        Record {
+            id,
+            name: path.file_name().unwrap().to_string_lossy().into_owned(),
+            path: path.display().to_string(),
+            received: 1,
+            total: 1,
+            state: state.into(),
+            error: None,
+            created: 1,
+            finished: None,
+            info: Info::default(),
+        }
+    }
 
     #[test]
     fn names_are_safe() {
@@ -291,8 +605,7 @@ mod tests {
 
     #[test]
     fn unique_paths() {
-        let dir = std::env::temp_dir().join(format!("kinly-dl-test-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+        let dir = tmp("unique");
         assert_eq!(unique_path(&dir, "a", "mkv"), dir.join("a.mkv"));
         std::fs::write(dir.join("a.mkv"), b"").unwrap();
         std::fs::write(dir.join("a (2).mkv.part"), b"").unwrap();
@@ -306,5 +619,111 @@ mod tests {
         assert!(!header_ok("Host", "evil"));
         assert!(!header_ok("X-A", "a\r\nB: c"));
         assert!(!header_ok("Bad Name", "v"));
+    }
+
+    #[test]
+    fn writable_folders() {
+        let dir = tmp("writable");
+        assert!(ensure_writable(&dir.join("new/sub")).is_ok());
+        assert!(dir.join("new/sub").is_dir());
+        std::fs::write(dir.join("file"), b"x").unwrap();
+        assert!(ensure_writable(&dir.join("file")).is_err());
+        assert!(ensure_writable(Path::new("relative/dir")).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn interrupted_downloads_are_cleaned_up_on_load() {
+        let dir = tmp("load");
+        let video = dir.join("a.mkv");
+        std::fs::write(part_of(&video), b"partial").unwrap();
+        let db = dir.join("downloads.json");
+        let doc = Db { v: 1, records: vec![rec(7, &video, RUNNING)] };
+        std::fs::write(&db, serde_json::to_vec(&doc).unwrap()).unwrap();
+        let d = Downloader::load(db.clone());
+        let l = d.list();
+        assert_eq!(l.len(), 1);
+        assert_eq!(l[0].state, INTERRUPTED);
+        assert!(!part_of(&video).exists());
+        assert_eq!(d.next.load(Ordering::Relaxed), 7);
+        // Saved: a second load sees it interrupted too.
+        assert_eq!(Downloader::load(db).list()[0].state, INTERRUPTED);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn corrupt_database_is_moved_aside() {
+        let dir = tmp("corrupt");
+        let db = dir.join("downloads.json");
+        std::fs::write(&db, b"{nope").unwrap();
+        assert!(Downloader::load(db.clone()).list().is_empty());
+        assert!(!db.exists());
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn delete_only_touches_recorded_finished_videos() {
+        let dir = tmp("delete");
+        let d = Downloader::load(dir.join("downloads.json"));
+        let done = dir.join("done.mkv");
+        std::fs::write(&done, b"v").unwrap();
+        let running = dir.join("running.mkv");
+        let not_video = dir.join("notes.txt");
+        std::fs::write(&not_video, b"keep").unwrap();
+        d.insert(rec(1, &done, DONE), Arc::default());
+        d.insert(rec(2, &running, RUNNING), Arc::default());
+        d.insert(rec(3, &not_video, DONE), Arc::default());
+
+        // Playing, running, or not a video: refused and untouched.
+        assert!(d.delete(1, Some(&done.display().to_string())).is_err());
+        assert!(done.exists());
+        assert!(d.delete(2, None).unwrap_err().contains("running"));
+        assert!(d.delete(3, None).is_err());
+        assert!(not_video.exists());
+        assert!(d.delete(99, None).is_err());
+
+        d.delete(1, None).unwrap();
+        assert!(!done.exists());
+        assert!(d.list().iter().all(|r| r.id != 1));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn missing_files_and_dismissal() {
+        let dir = tmp("missing");
+        let d = Downloader::in_memory();
+        let gone = dir.join("gone.mp4");
+        d.insert(rec(1, &gone, DONE), Arc::default());
+        assert_eq!(d.list()[0].state, MISSING);
+        assert!(d.is_managed(&gone.display().to_string()));
+        // A missing file's record can still be removed.
+        d.delete(1, None).unwrap();
+        assert!(d.list().is_empty());
+
+        d.insert(rec(2, &gone, FAILED), Arc::default());
+        d.cancel(2);
+        assert!(d.list().is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn finishing_and_cancelling() {
+        let d = Downloader::in_memory();
+        let p = std::env::temp_dir().join("kinly-finish.mkv");
+        d.insert(rec(1, &p, RUNNING), Arc::default());
+        assert_eq!(d.set_received(1, 50).unwrap().received, 50);
+        assert_eq!(d.finish(1, Some(Err("broke".into()))).unwrap().state, FAILED);
+        d.insert(rec(2, &p, RUNNING), Arc::default());
+        assert_eq!(d.finish(2, None).unwrap().state, "cancelled");
+        assert!(d.list().iter().all(|r| r.id != 2));
+    }
+
+    #[test]
+    fn path_equality() {
+        assert!(same_path("file:///a/b.mkv", "/a/b.mkv"));
+        assert!(!same_path("/a/b.mkv", "/a/c.mkv"));
+        #[cfg(windows)]
+        assert!(same_path(r"C:\Users\A\v.mkv", "c:/users/a/V.MKV"));
     }
 }

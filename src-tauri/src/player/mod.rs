@@ -317,11 +317,47 @@ fn create_mpv(fonts_dir: Option<&PathBuf>, wid: Option<i64>) -> Result<Mpv, Stri
     .map_err(|e| format!("mpv init: {e:?}"))
 }
 
+/// Windows: libmpv-2.dll is delay-loaded (see build.rs). Load it explicitly before the first
+/// libmpv call, so a missing or unloadable DLL becomes an error message instead of a crash.
+#[cfg(windows)]
+pub fn engine_available() -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::core::PCWSTR;
+    use windows::Win32::System::LibraryLoader::LoadLibraryW;
+    static CHECK: std::sync::OnceLock<Result<(), String>> = std::sync::OnceLock::new();
+    CHECK
+        .get_or_init(|| {
+            let bundled = std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.join("libmpv-2.dll")));
+            // The installed copy next to kinly.exe; otherwise (development builds) the normal DLL search.
+            let target: std::ffi::OsString = match &bundled {
+                Some(p) if p.is_file() => p.clone().into_os_string(),
+                _ => "libmpv-2.dll".into(),
+            };
+            let wide: Vec<u16> = target.encode_wide().chain(Some(0)).collect();
+            match unsafe { LoadLibraryW(PCWSTR(wide.as_ptr())) } {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    let where_ = bundled.as_ref().and_then(|p| p.parent()).map(|d| d.display().to_string()).unwrap_or_default();
+                    let missing = bundled.as_ref().is_some_and(|p| !p.is_file());
+                    crate::log_error!("player", "libmpv-2.dll {} ({e})", if missing { "is missing" } else { "could not be loaded" });
+                    Err(if missing {
+                        format!("its file libmpv-2.dll is missing from {where_}. The installation is incomplete, or a security program removed the file. Reinstall Kinly from the official release")
+                    } else {
+                        format!("libmpv-2.dll could not be loaded: {e}. Reinstall Kinly from the official release")
+                    })
+                }
+            }
+        })
+        .clone()
+}
+
 fn ensure_started(app: &AppHandle, state: &PlayerState) -> Result<Arc<Mpv>, String> {
     let mut slot = state.mpv.lock().map_err(|e| e.to_string())?;
     if let Some(m) = slot.as_ref() {
         return Ok(m.clone());
     }
+    #[cfg(windows)]
+    engine_available()?;
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "main window missing".to_string())?;
@@ -453,6 +489,7 @@ pub async fn player_load(app: AppHandle, state: State<'_, PlayerState>, args: Lo
     if !is_local {
         crate::net::check_url(&args.url)?;
     }
+    set_playing_local(is_local.then(|| args.url.clone()));
     let mpv = ensure_started(&app, &state).map_err(|e| {
         crate::log_error!("player", "video engine failed to start: {e}");
         format!("The video engine could not start ({e}).")
@@ -556,6 +593,7 @@ pub async fn player_sub_add(
 #[tauri::command]
 pub async fn player_stop(app: AppHandle, state: State<'_, PlayerState>) -> Result<(), String> {
     use std::sync::atomic::Ordering::SeqCst;
+    set_playing_local(None);
     let gen = LOAD_GEN.load(SeqCst);
     if let Ok(mpv) = state.get() {
         command_argv(&mpv, &["stop"])?;
@@ -592,6 +630,19 @@ fn set_video_visible(app: &AppHandle, visible: bool) {
 
 /// Incremented by every `player_load`; lets a late `player_stop` see it is stale.
 static LOAD_GEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The local file loaded in the player, if any (so Downloads won't delete it while it plays).
+static PLAYING_LOCAL: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+fn set_playing_local(path: Option<String>) {
+    if let Ok(mut p) = PLAYING_LOCAL.lock() {
+        *p = path;
+    }
+}
+
+pub fn playing_local() -> Option<String> {
+    PLAYING_LOCAL.lock().ok().and_then(|p| p.clone())
+}
 
 /// Save the current frame as a small JPEG for Continue watching (local files have no artwork).
 #[tauri::command]

@@ -16,6 +16,10 @@ import {
   cancelTraktConnect, copyTraktConnection, disconnectTrakt, getTrakt, hasTraktConnection, loadTraktStoreForTests, migrateTrakt, parseTraktStore, startTraktConnect,
   traktScrobble,
 } from "../src/lib/trakt";
+import { FEATURES } from "../src/lib/features";
+
+// These tests cover the integration itself, which stays in the code while it is switched off.
+FEATURES.trakt = true;
 
 const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

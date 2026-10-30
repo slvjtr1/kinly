@@ -7,7 +7,30 @@ is a normal web page layered over the video. On Linux the webview is WebKitGTK
 and mpv renders into a GTK `GLArea` (diagram below); on Windows the webview is
 WebView2 and mpv's own d3d11 video output is embedded as a child window
 (`docs/BUILDING.md`, *How video works on each OS*). Accounts, profiles and cloud
-sync are optional and described in `ACCOUNTS.md`.
+sync are optional and described in `ACCOUNTS.md`. Other platforms are planned, not
+supported: see [PLATFORM_ARCHITECTURE.md](PLATFORM_ARCHITECTURE.md).
+
+## Layers
+
+Kinly 1.1 keeps the Tauri 2 + React/TypeScript + Rust stack. A review for this release
+found no reason to change language or framework: the pure logic is already separated
+from the platform code, it is unit tested, and a rewrite would put working playback,
+subtitle and sync code at risk for no user-visible gain. The code is organised in four
+layers:
+
+| Layer | What it holds | Where |
+| --- | --- | --- |
+| **Shared core** | Platform-free logic with no I/O: stream ranking and release-name parsing, subtitle auto-select, settings sanitising and migration, library/profile merge rules, the view stack, search history and download list rules, spatial-navigation geometry. Unit tested in Node (`tests/`). In Rust: subtitle decoding and parsing, VAD and correlation (`sync/`), download naming and path rules. | `src/lib/*.ts` (pure modules), `src-tauri/src/subs`, `src-tauri/src/sync`, parts of `download.rs` and `paths.rs` |
+| **Platform abstraction** | The boundary between UI and OS: typed wrappers around Tauri commands and events (the only direct `invoke` calls elsewhere are the launch-file handoff in `App.tsx` and `lib/trailers.ts`). | `src/lib/tauri.ts`, `src/lib/caps.ts`, the `#[tauri::command]` functions |
+| **UI** | React views and components, themes, focus and remote navigation (`lib/spatialNav.ts`). Platform-neutral web code: it runs in WebView2 and WebKitGTK alike. | `src/views`, `src/components`, `src/styles` |
+| **Platform implementations** | Video embedding (GTK `GLArea` on Linux, a d3d11 child window on Windows), file system, process spawning (ffmpeg, yt-dlp), downloads, logging, store files. | `src-tauri/src/player/render_linux.rs`, `render_windows.rs`, `local.rs`, `download.rs`, `store.rs`, `trailer.rs`, `logging.rs` |
+
+A new platform would reuse the shared core and most of the UI, and replace the
+platform implementations (see PLATFORM_ARCHITECTURE.md for what that means per platform).
+
+Feature flags for functionality that is built but switched off live in
+`src/lib/features.ts` (Trakt is off in 1.1.0 Beta; see
+[TRAKT_TEMPORARILY_DISABLED.md](TRAKT_TEMPORARILY_DISABLED.md)).
 
 ```
 ┌──────────────────────── GTK window ────────────────────────┐
@@ -33,8 +56,8 @@ sync are optional and described in `ACCOUNTS.md`.
 
 | Decision | Why |
 | --- | --- |
-| New project reusing selected Compass parts, not a trimmed fork | Compass (~12k files) entangles music, games, torrents, casting, TV/Android in shared code. The reused parts were cleanly separable. |
-| Tauri 2 + system libmpv | Compass's proven Linux embed (GLArea under webview). libmpv gives broad codec/container support and libass subtitle rendering. No second playback engine. |
+| New project with code adapted from three Compass (MIT) files, not a fork | Compass (~12k files) entangles music, games, torrents, casting, TV/Android in shared code. The adapted parts (Linux video embedding, VAD hysteresis, sync correlation) were cleanly separable; they are listed with their licence in `THIRD_PARTY_NOTICES.md` and marked in the source files. |
+| Tauri 2 + system libmpv | The GLArea-under-webview embedding (adapted from Compass) is proven on Linux. libmpv gives broad codec/container support and libass subtitle rendering. No second playback engine. |
 | Subtitles rendered by libass, not HTML | Correct HarfBuzz/FriBidi shaping for Arabic, embedded fonts, ASS support, and frame-accurate timing. |
 | Direct HTTP streams only | No torrent engine (heavy, legally sensitive). `infoHash` results are listed as unsupported; debrid-configured addons return HTTP URLs. |
 | Local JSON files; cloud sync optional | Small data volumes; atomic writes; corrupt files are moved aside, never deleted. Everything works offline as a guest. Signing in adds profiles synced through Supabase (PostgREST with row-level security, called from Rust's HTTP client; no SDK). |
@@ -110,10 +133,29 @@ React 19, no router or state library: an in-memory route stack (`state.tsx`),
 module stores with `useSyncExternalStore` for addons, library, device caps and
 credentials. Views: Home, Movies/Series (catalog + genre, infinite paging), Search
 (all searchable catalogs), Detail (episodes; Play opens a sources sheet), Player,
-Library, Local files, Addons, Settings (sectioned: Appearance, Playback, Subtitles,
-Languages, Library, Addons, Connections, Account, Trakt, About). Themes are CSS custom
+Library, Downloads, Addons, Settings (sectioned: Appearance, Playback, Subtitles,
+Languages, Library, Addons, Connections, Account, About). Themes are CSS custom
 properties on `[data-theme]`; the interface font is Inter (bundled).
 
+- **Keyboard and remote navigation** (`lib/spatialNav.ts`): one window-level handler
+  moves focus with the arrow keys / D-pad to the nearest focusable element in that
+  direction (pure `pickNext` geometry, unit tested), activates with Enter/OK, and maps
+  Back (Escape, GoBack, BrowserBack, webOS 461) to "leave the text field" then
+  "previous view". Open dialogs (`aria-modal`, `role=dialog`, `data-nav-scope`) scope
+  the movement; `trapDialogFocus` moves focus into a dialog and back out when it
+  closes. `App.tsx` remembers the focused element per view and restores it on Back.
+  Text fields, sliders and selects keep the arrows they need; `data-nav="native"` opts
+  an element out. The player keeps its own keys. *TV mode* (Settings → Appearance) only
+  enlarges focus rings and targets.
+- **Search history** (`lib/searchHistory.ts`): the `searches` store, newest first, at
+  most 20 per profile, case-insensitive de-duplication; remembered on Enter or when a
+  result is opened. Local only, separate from the library.
+- **Downloads** (`src-tauri/src/download.rs`, `views/Downloads.tsx`): Kinly-managed
+  downloads are recorded in `downloads.json` (title, episode, size, state, path).
+  Deleting removes only a file in that list, after confirmation, never one that is
+  downloading or playing, and only a regular video file at an absolute path. The
+  download folder is checked for write access before it is used and recorded per
+  download, so changing it later does not break existing entries.
 - **Streams** (`lib/streams.ts`): every result is kept and ranked in tiers: playable
   and smooth on this device → playable but may stutter → unplayable. "May stutter"
   means above the quality cap (the user's limit, or `SystemCaps.recommendedMaxHeight`
@@ -146,7 +188,9 @@ properties on `[data-theme]`; the interface font is Inter (bundled).
 
 | Data | Linux | Windows |
 | --- | --- | --- |
-| `settings`, `library`, `addons`, `subprefs`, `credentials`, `account`, `trakt`, `profile` (`.json`, owner-only on Linux) | `~/.config/app.kinly.desktop/` | `%APPDATA%\app.kinly.desktop\` |
+| `settings`, `library`, `addons`, `subprefs`, `credentials`, `account`, `trakt`, `profile`, `searches` (`.json`, owner-only on Linux) | `~/.config/app.kinly.desktop/` | `%APPDATA%\app.kinly.desktop\` |
+| `downloads.json` (the Kinly-managed download list) | `~/.local/share/app.kinly.desktop/` | `%APPDATA%\app.kinly.desktop\` |
+| Downloaded videos (default; Settings → Library changes it) | `$(xdg-user-dir VIDEOS)`, else `~/Videos` | the Videos known folder |
 | Logs (`kinly.log`, rotated at 2 MB, URLs and tokens redacted) | `~/.local/share/app.kinly.desktop/logs/` | `%LOCALAPPDATA%\app.kinly.desktop\logs\` |
 | Prepared subtitles, thumbnails | `~/.cache/app.kinly.desktop/` | `%LOCALAPPDATA%\app.kinly.desktop\` |
 | Managed yt-dlp copy (trailers) | `~/.local/share/app.kinly.desktop/` | `%APPDATA%\app.kinly.desktop\` |
@@ -160,5 +204,5 @@ Runtime: Linux — libmpv2 (0.37), WebKitGTK 4.1, GTK 3, ffmpeg (Auto Sync), fro
 system or bundled in the AppImage. Windows — libmpv-2.dll, ffmpeg.exe and yt-dlp.exe
 bundled by the installer, WebView2. Licensing: `THIRD_PARTY_NOTICES.md`.
 Rust: tauri 2.12, libmpv2 4.1, gtk 0.18, reqwest (rustls), realfft, webrtc-vad,
-encoding_rs, chardetng, walkdir. UI: react 19, lucide-react, @tauri-apps/api and
+encoding_rs, chardetng, walkdir. UI: react 19, lucide-react, DiceBear avatar art (generated at development time, bundled as SVG), @tauri-apps/api and
 plugins (dialog, opener). Build: Vite 8, TypeScript 5.8, vitest 5.

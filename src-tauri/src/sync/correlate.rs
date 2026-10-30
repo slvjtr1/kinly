@@ -7,9 +7,10 @@
 //! accepted only when enough windows agree, which separates a constant offset or
 //! standard fps drift from timing that changes in other ways (different cut).
 //!
-//! The FFT cross-correlation and peak statistics follow Compass
-//! (src-tauri/src/subsync/correlate.rs @ a4adad6, MIT); windowing, zero-mean
-//! weighting and the multi-window consensus are Kinly's.
+//! The FFT cross-correlation (`fft_xcorr`) and the peak statistics are adapted
+//! from Compass (src-tauri/src/subsync/correlate.rs @ a4adad6, Copyright (c) 2026
+//! Compass, MIT; see THIRD_PARTY_NOTICES.md); windowing, zero-mean weighting and
+//! the multi-window consensus are Kinly's.
 
 use realfft::num_complex::Complex;
 use realfft::RealFftPlanner;

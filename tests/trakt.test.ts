@@ -11,6 +11,10 @@ import * as tauri from "../src/lib/tauri";
 import {
   TRAKT_API, TRAKT_RELAY, mapWatchedMovies, mapWatchedShows, mapWatchlist, oauthPost, parseDeviceCode, parseTraktTokens, pollDeviceToken, scrobbleBody,
 } from "../src/lib/trakt";
+import { FEATURES } from "../src/lib/features";
+
+// These tests cover the integration itself, which stays in the code while it is switched off.
+FEATURES.trakt = true;
 
 const tokens = { access_token: "a".repeat(64), refresh_token: "b".repeat(64), expires_in: 86400, created_at: 1_700_000_000, token_type: "bearer", scope: "public" };
 

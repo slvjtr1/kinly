@@ -25,7 +25,7 @@ pub struct LoadResult {
     pub recovered_from: Option<String>,
 }
 
-const ALLOWED: &[&str] = &["settings", "library", "addons", "credentials", "subprefs", "account", "trakt", "profile"];
+const ALLOWED: &[&str] = &["settings", "library", "addons", "credentials", "subprefs", "account", "trakt", "profile", "searches"];
 
 impl Store {
     pub fn new(dir: PathBuf) -> Self {

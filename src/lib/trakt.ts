@@ -11,6 +11,7 @@ import type { LibItem, LibraryDoc, Progress } from "./library";
 import { progressKey } from "./library";
 import { GUEST, getOwner, onOwnerChange, onProfileDeleted, ownerKeyOk } from "./owner";
 import { importIntoLibrary } from "./sync";
+import { FEATURES } from "./features";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./supabaseConfig";
 import { http, storeLoad, storeSave, uiLog, type HttpResponse } from "./tauri";
 
@@ -321,7 +322,7 @@ const sharing = (k: string, access: string) => Object.entries(store.profiles).fi
 let storeLoaded = false;
 let firstTimer: ReturnType<typeof setTimeout> | undefined;
 const auto = () => {
-  if (doc.tokens && Date.now() - (doc.lastSync ?? 0) >= AUTO_SYNC_MS) void traktSyncNow();
+  if (FEATURES.trakt && doc.tokens && Date.now() - (doc.lastSync ?? 0) >= AUTO_SYNC_MS) void traktSyncNow();
 };
 
 /** Makes `owner`'s connection the active one: cancels a connect in progress and restarts auto-sync. */
@@ -358,7 +359,9 @@ export async function initTrakt(): Promise<void> {
   storeLoaded = true;
   const owner = active ?? getOwner();
   if (owner) activate(owner);
-  setInterval(auto, AUTO_SYNC_MS);
+  // While Trakt is switched off the store is still loaded (profile copy/delete keep it consistent),
+  // but nothing talks to Trakt.
+  if (FEATURES.trakt) setInterval(auto, AUTO_SYNC_MS);
 }
 
 /** Test hook: replaces the loaded store and activates `owner` without touching disk first. */
@@ -402,6 +405,7 @@ async function sharedClientId(): Promise<string> {
 }
 
 export async function startTraktConnect(): Promise<void> {
+  if (!FEATURES.trakt) return;
   const k = requireOwner();
   const run = ++connectRun;
   setState({ phase: { kind: "requesting" }, error: null });
@@ -539,7 +543,7 @@ export async function forgetTraktProfile(profileId: string): Promise<void> {
   if (!storeLoaded || !store.profiles[profileId]) return;
   const e = entry(profileId);
   await put(profileId, {}).catch(() => {});
-  if (e.tokens) await revokeUnlessShared(profileId, e);
+  if (e.tokens && FEATURES.trakt) await revokeUnlessShared(profileId, e);
 }
 
 /**
@@ -571,6 +575,7 @@ let syncingFor: string | null = null;
 let syncToken: object | null = null;
 /** Imports the active profile's Trakt watchlist and watched history into its Kinly library. */
 export function traktSyncNow(): Promise<void> {
+  if (!FEATURES.trakt) return Promise.resolve();
   const k = active;
   if (syncing && syncingFor === k) return syncing;
   if (!k || !doc.tokens) return Promise.resolve();
@@ -631,6 +636,7 @@ let lastScrobble = { sig: "", at: 0 };
  * paused, "stop" when it ends or the player closes. `progressPct` is 0..100. Never throws.
  */
 export async function traktScrobble(kind: "start" | "pause" | "stop", item: ScrobbleItem, progressPct: number): Promise<boolean> {
+  if (!FEATURES.trakt) return false;
   const k = active;
   if (!k || !doc.tokens) return false;
   const body = scrobbleBody(item, progressPct);

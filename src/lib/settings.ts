@@ -76,7 +76,14 @@ export const SETTINGS_VERSION = 3;
 
 export type Settings = {
   version: typeof SETTINGS_VERSION;
-  appearance: { theme: ThemeId; uiScale: number; reduceMotion: boolean; performanceMode: PerformanceMode };
+  appearance: {
+    theme: ThemeId;
+    uiScale: number;
+    reduceMotion: boolean;
+    performanceMode: PerformanceMode;
+    /** Remote-friendly display: larger focus rings and targets, for a TV across the room. */
+    tvMode: boolean;
+  };
   subtitles: { autoSelect: boolean; autoSync: boolean; languages: string[]; avoidSdh: boolean; style: SubStyle };
   playback: {
     volume: number;
@@ -94,8 +101,11 @@ export type Settings = {
     /** NVIDIA RTX Video Super Resolution (Windows, RTX GPU, hardware decoding). */
     rtxSuperResolution: boolean;
   };
-  /** downloadExternally: hand download links to the browser / a download manager instead of saving them in Kinly. */
-  library: { watchedThreshold: number; folders: string[]; downloadExternally: boolean };
+  /**
+   * downloadExternally: hand download links to the browser / a download manager instead of saving
+   * them in Kinly. downloadDir: where Kinly saves downloads; null is the Videos folder.
+   */
+  library: { watchedThreshold: number; folders: string[]; downloadExternally: boolean; downloadDir: string | null };
 };
 
 export const DEFAULT_STYLE: SubStyle = {
@@ -119,7 +129,7 @@ export const DEFAULT_STYLE: SubStyle = {
 
 export const DEFAULT_SETTINGS: Settings = {
   version: SETTINGS_VERSION,
-  appearance: { theme: "kinly", uiScale: 1, reduceMotion: false, performanceMode: "auto" },
+  appearance: { theme: "kinly", uiScale: 1, reduceMotion: false, performanceMode: "auto", tvMode: false },
   subtitles: { autoSelect: true, autoSync: true, languages: ["ara", "eng"], avoidSdh: true, style: DEFAULT_STYLE },
   playback: {
     volume: 100,
@@ -134,7 +144,7 @@ export const DEFAULT_SETTINGS: Settings = {
     player: "builtin",
     rtxSuperResolution: false,
   },
-  library: { watchedThreshold: 0.9, folders: [], downloadExternally: false },
+  library: { watchedThreshold: 0.9, folders: [], downloadExternally: false, downloadDir: null },
 };
 
 const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
@@ -174,6 +184,7 @@ export function sanitizeSettings(raw: unknown): Settings {
       uiScale: num(a.uiScale, 0.8, 1.5, 1),
       reduceMotion: bool(a.reduceMotion, false),
       performanceMode: oneOf(a.performanceMode, PERFORMANCE_MODES, "auto"),
+      tvMode: bool(a.tvMode, false),
     },
     subtitles: {
       autoSelect: bool(s.autoSelect, true),
@@ -216,6 +227,7 @@ export function sanitizeSettings(raw: unknown): Settings {
       watchedThreshold: num(l.watchedThreshold, 0.7, 0.98, 0.9),
       folders: Array.isArray(l.folders) ? (l.folders as unknown[]).filter((f): f is string => typeof f === "string").slice(0, 20) : [],
       downloadExternally: bool(l.downloadExternally, false),
+      downloadDir: typeof l.downloadDir === "string" && l.downloadDir.trim() && l.downloadDir.length <= 1024 ? l.downloadDir : null,
     },
   };
 }

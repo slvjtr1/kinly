@@ -7,6 +7,7 @@ import {
   TRAKT_APPS_URL, TRAKT_REDIRECT, cancelTraktConnect, disconnectTrakt, forgetTraktApp, looksLikeTraktCredential, saveTraktApp,
   startTraktConnect, traktSyncNow, useTrakt,
 } from "../lib/trakt";
+import { FEATURES } from "../lib/features";
 import { StrengthMeter } from "./Auth";
 import { Avatar } from "./Profiles";
 
@@ -93,7 +94,7 @@ export function AccountSettings() {
         label="Cloud sync"
         help={
           <>
-            Settings sync for the whole account; each profile's library and addons sync on their own. Trakt and TMDB connections
+            Settings sync for the whole account; each profile's library and addons sync on their own. {FEATURES.trakt ? "Trakt and TMDB connections" : "TMDB keys"}
             belong to each profile and stay on this device. Volume, hardware decoding, interface size and local folders stay on this device too.
             <br />
             {account.offline ? "Offline — changes will sync when you're back online." : sync.busy ? "Syncing…" : `Last synced ${ago(sync.lastSync)}`}

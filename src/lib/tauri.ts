@@ -21,7 +21,7 @@ export async function httpJson<T>(url: string, timeoutMs = 15000): Promise<T> {
   }
 }
 
-export type StoreName = "settings" | "library" | "addons" | "credentials" | "subprefs" | "account" | "trakt" | "profile";
+export type StoreName = "settings" | "library" | "addons" | "credentials" | "subprefs" | "account" | "trakt" | "profile" | "searches";
 export type LoadResult<T> = { value: T | null; recoveredFrom: string | null };
 
 export const storeLoad = <T>(name: StoreName) => invoke<LoadResult<T>>("store_load", { name });
@@ -134,22 +134,35 @@ export const downloadsList = (extra: string[]) => invoke<DownloadsListing>("down
 export const onDownloadFinished = (cb: (f: LocalFile) => void): Promise<UnlistenFn> =>
   listen<LocalFile>("downloads:new", (e) => cb(e.payload));
 
-// In-app downloads (download.rs). `total` is 0 when the server doesn't send a size.
-export type DownloadProgress = {
+// In-app downloads (download.rs): every download Kinly makes is recorded, and only recorded files
+// can be deleted from Kinly. `total` is 0 when the server doesn't send a size.
+export type DownloadState = "running" | "done" | "failed" | "interrupted" | "missing" | "cancelled";
+export type DownloadInfo = { title?: string; metaId?: string; type?: string; season?: number; episode?: number };
+export type DownloadRecord = {
   id: number;
   name: string;
+  path: string;
   received: number;
   total: number;
-  state: "running" | "done" | "failed" | "cancelled";
+  state: DownloadState;
   error: string | null;
+  created: number;
+  finished: number | null;
+  info: DownloadInfo;
 };
-export const downloadStart = (url: string, name: string, headers?: Record<string, string>) =>
-  invoke<DownloadProgress>("download_start", { url, name, headers });
-/** Cancels a running download or dismisses a failed one. */
+/** `dir` null: the default folder (Videos). */
+export const downloadStart = (url: string, name: string, opts: { headers?: Record<string, string>; dir?: string | null; info?: DownloadInfo } = {}) =>
+  invoke<DownloadRecord>("download_start", { url, name, headers: opts.headers, dir: opts.dir ?? null, info: opts.info });
+/** Cancels a running download, or dismisses a failed or interrupted one. */
 export const downloadCancel = (id: number) => invoke<void>("download_cancel", { id });
-export const downloadsActive = () => invoke<DownloadProgress[]>("downloads_active");
-export const onDownloadProgress = (cb: (p: DownloadProgress) => void): Promise<UnlistenFn> =>
-  listen<DownloadProgress>("downloads:progress", (e) => cb(e.payload));
+/** Deletes a finished download's file and record (refused while it downloads or plays). */
+export const downloadDelete = (id: number) => invoke<void>("download_delete", { id });
+export const downloadsManaged = () => invoke<DownloadRecord[]>("downloads_managed");
+/** Checks (and creates) a download folder; resolves to the path Kinly will use. */
+export const downloadDirCheck = (dir: string) => invoke<string>("download_dir_check", { dir });
+export const downloadDefaultDir = () => invoke<string | null>("download_default_dir");
+export const onDownloadProgress = (cb: (r: DownloadRecord) => void): Promise<UnlistenFn> =>
+  listen<DownloadRecord>("downloads:progress", (e) => cb(e.payload));
 
 // Device capabilities (probed once per session)
 export type GpuCaps = {

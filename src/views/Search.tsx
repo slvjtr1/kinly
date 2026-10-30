@@ -1,17 +1,20 @@
-import { startTransition, useEffect, useRef, useState } from "react";
-import { Search as SearchIcon } from "lucide-react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
+import { History, Search as SearchIcon, Trash2, X } from "lucide-react";
 import { searchAll, type CatalogDef, type MetaPreview, type Addon } from "../lib/addons";
+import { clearSearches, forgetSearch, rememberSearch, useSearchHistory } from "../lib/searchHistory";
 import { useAddons } from "../lib/useAddons";
-import { Empty, MetaCard, RowSkeleton, useOpenMeta } from "../components/ui";
+import { Empty, MetaCard, Modal, RowSkeleton, useOpenMeta } from "../components/ui";
 
 type Group = { addon: Addon; catalog: CatalogDef; items: MetaPreview[] };
 
 export default function Search({ initial }: { initial: string }) {
   const { addons } = useAddons();
-  const open = useOpenMeta();
+  const openMeta = useOpenMeta();
+  const history = useSearchHistory();
   const [query, setQuery] = useState(initial);
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const seq = useRef(0);
 
@@ -43,23 +46,69 @@ export default function Search({ initial }: { initial: string }) {
     return () => window.clearTimeout(t);
   }, [query, addons]);
 
+  // A search is remembered when it is confirmed (Enter) or one of its results is opened, not for
+  // every half-typed query.
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  const open = useCallback(
+    (m: MetaPreview) => {
+      void rememberSearch(queryRef.current);
+      openMeta(m);
+    },
+    [openMeta],
+  );
+  const searchAgain = (q: string) => {
+    setQuery(q);
+    void rememberSearch(q);
+    input.current?.focus();
+  };
+
+  const showHistory = !groups && !busy && query.trim().length < 2;
+
   return (
     <div className="page">
-      <div style={{ position: "relative", maxWidth: 640, marginBottom: 26 }}>
-        <SearchIcon size={18} style={{ position: "absolute", left: 14, top: 13 }} className="faint" />
+      <div className="search-box">
+        <SearchIcon size={18} className="faint search-box-icon" />
         <input
           ref={input}
           className="input"
-          style={{ width: "100%", height: 44, paddingLeft: 42, fontSize: 15 }}
           placeholder="Search movies and series"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void rememberSearch(query)}
           aria-label="Search"
         />
+        {query && (
+          <button className="icon-btn search-box-clear" onClick={() => { setQuery(""); input.current?.focus(); }} aria-label="Clear the search box" title="Clear">
+            <X size={16} />
+          </button>
+        )}
       </div>
       {busy && !groups && <RowSkeleton />}
       {groups && groups.length === 0 && !busy && <Empty title={`No results for “${query.trim()}”`}>Try a different spelling or the original title.</Empty>}
-      {!groups && !busy && <Empty title="Search across your sources">Type at least two characters.</Empty>}
+      {showHistory && history.length === 0 && <Empty title="Search across your sources">Type at least two characters. Your recent searches will show up here.</Empty>}
+      {showHistory && history.length > 0 && (
+        <section className="search-history" aria-label="Recent searches">
+          <div className="section-title search-history-title">
+            <History size={18} /> Recent searches
+            <button className="btn ghost small" onClick={() => setConfirmClear(true)}>
+              <Trash2 size={15} /> Clear search history
+            </button>
+          </div>
+          <ul className="search-history-list">
+            {history.map((q) => (
+              <li key={q} className="search-history-item">
+                <button className="search-history-query" onClick={() => searchAgain(q)} title={`Search for “${q}”`}>
+                  <SearchIcon size={15} className="faint" /> <span>{q}</span>
+                </button>
+                <button className="icon-btn" onClick={() => void forgetSearch(q)} aria-label={`Remove “${q}” from search history`} title="Remove">
+                  <X size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {groups?.map((g) => (
         <div key={`${g.addon.transportUrl}:${g.catalog.type}:${g.catalog.id}`}>
           <div className="section-title">
@@ -74,6 +123,20 @@ export default function Search({ initial }: { initial: string }) {
           </div>
         </div>
       ))}
+      {confirmClear && (
+        <Modal
+          title="Clear search history?"
+          onClose={() => setConfirmClear(false)}
+          actions={
+            <>
+              <button className="btn ghost" onClick={() => setConfirmClear(false)}>Cancel</button>
+              <button className="btn danger" onClick={() => { void clearSearches(); setConfirmClear(false); }}>Clear history</button>
+            </>
+          }
+        >
+          <p>This removes all {history.length} recent searches for this profile on this computer. Your watch history and downloads are not affected.</p>
+        </Modal>
+      )}
     </div>
   );
 }

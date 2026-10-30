@@ -1,6 +1,6 @@
 {
   "name": "kinly",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -23,6 +23,8 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@dicebear/collection": "9.4.3",
+    "@dicebear/core": "9.4.3",
     "@electric-sql/pglite": "0.5.13",
     "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^26.6.5",

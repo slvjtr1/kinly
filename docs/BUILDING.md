@@ -209,7 +209,7 @@ OpenGL there, which would mean WGL, `WGL_NV_DX_interop` (or copy-back decoding)
 for D3D11VA frames, a GL context driven from the UI thread, and no D3D11 frames
 for `d3d11vpp`, so no RTX Video Super Resolution. The native d3d11 VO is mpv's
 best-tested Windows path: zero-copy D3D11VA, a flip-model swap chain, and rendering
-on mpv's own thread. Compass, which Kinly derives from, ships the same layout.
+on mpv's own thread. Compass (whose Linux embedding Kinly adapts) ships the same layout.
 
 **Risks of the Windows embedding** (not yet verified on real hardware):
 

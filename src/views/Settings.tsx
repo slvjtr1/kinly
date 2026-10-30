@@ -15,6 +15,8 @@ import { looksLikeTmdbKey, setTmdbKey, subscribeCredentials, testTmdbKey, tmdbKe
 import { useApp } from "../state";
 import { PrismHint, Switch, errorMessage } from "../components/ui";
 import { AccountSettings, TraktSettings } from "./AccountSettings";
+import { FEATURES } from "../lib/features";
+import { DownloadFolderSetting } from "./Downloads";
 
 type SectionId = "appearance" | "playback" | "subtitles" | "languages" | "addons" | "connections" | "account" | "library" | "about";
 
@@ -130,6 +132,9 @@ function Appearance() {
       </Row>
       <Row label="Reduce motion" help="Turns off hover lifts and animated transitions. Kinly also follows your system's reduced-motion setting.">
         <Switch checked={a.reduceMotion} onChange={(v) => set({ reduceMotion: v })} label="Reduce motion" />
+      </Row>
+      <Row label="TV mode" help="Bigger focus highlights and controls for using Kinly from across the room with a remote or keyboard. Arrow keys, Enter and Back work everywhere either way.">
+        <Switch checked={a.tvMode} onChange={(v) => set({ tvMode: v })} label="TV mode" />
       </Row>
     </>
   );
@@ -389,7 +394,7 @@ function Connections() {
           {err && <p className="error-text">{err}</p>}
         </div>
       )}
-      <TraktSettings />
+      {FEATURES.trakt && <TraktSettings />}
     </>
   );
 }
@@ -402,6 +407,9 @@ function LibrarySection() {
         <select className="select" value={l.watchedThreshold} onChange={(e) => set({ watchedThreshold: Number(e.target.value) })} aria-label="Watched threshold">
           {[0.8, 0.85, 0.9, 0.95].map((v) => <option key={v} value={v}>{Math.round(v * 100)}%</option>)}
         </select>
+      </Row>
+      <Row label="Download folder" help="Where Kinly saves the videos you download. Changing it only affects new downloads; earlier ones stay where they are and stay listed on the Downloads page.">
+        <DownloadFolderSetting compact />
       </Row>
       <Row label="Download outside Kinly" help={<>Off: Kinly saves downloads to your Downloads folder and shows their progress on the Downloads page. On: the link opens in your browser and is copied, for your own download manager <PrismHint />.</>}>
         <Switch checked={l.downloadExternally} onChange={(v) => set({ downloadExternally: v })} label="Download outside Kinly" />
@@ -449,8 +457,12 @@ function About() {
           <button className="btn" onClick={() => setConfirm(true)}><RotateCcw size={16} /> Reset…</button>
         )}
       </Row>
-      <Row label="Licenses" help="Kinly is MIT licensed and includes code adapted from Compass (MIT) and Noto fonts (SIL OFL 1.1).">
+      <Row
+        label="Licenses"
+        help="Kinly is MIT licensed. It includes code adapted from Compass (MIT), the Noto and Inter fonts (SIL OFL 1.1), and avatars by Lisa Wischofsky made with DiceBear (Adventurer: CC BY 4.0; Lorelei: CC0). The video engine libmpv and FFmpeg are GPL/LGPL. Full notices and licence texts are in the “notices” folder installed with Kinly."
+      >
         <button className="btn ghost" onClick={() => void openUrl("https://github.com/compassstremio/Compass")}>Compass</button>
+        <button className="btn ghost" onClick={() => void openUrl("https://www.dicebear.com/licenses/")}>DiceBear</button>
       </Row>
     </>
   );
