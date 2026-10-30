@@ -122,6 +122,10 @@ security intelligence 1.463.33.0 (the version that flagged 1.0.x):
   "libmpv-2.dll is missing … Reinstall Kinly from the official release" and the trailer
   fell back to the YouTube player instead of the app failing to start. The file was
   restored afterwards (SHA-256 unchanged).
+- Beta 2 (built by the same workflow): the installer was scanned with a Defender custom
+  scan (nothing found) and installed over Beta 1 with `/S`; `kinly.exe` was started
+  twice (browsing, keyboard navigation, search, profile editing, a download listed and
+  deleted): **no Defender detection**.
 
 This is one machine at one signature version. It does not prove that Defender or other
 products will not flag a later build, because heuristic models and reputation change.
