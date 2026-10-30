@@ -1,7 +1,7 @@
 // Stream classification and ranking. Kinly plays direct HTTP(S) streams only:
 // there is no torrent engine, so bare infoHash results are listed as unsupported.
 
-import type { Addon, Stream } from "./addons";
+import type { Addon, Meta, Stream, Video } from "./addons";
 import { parseRelease } from "./release";
 
 export type RankedStream = {
@@ -172,4 +172,14 @@ export const QUALITY_LABEL: Record<QualityGroup, string> = { "2160": "4K", "1080
 export function formatBytes(n: number | null): string {
   if (!n) return "";
   return n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`;
+}
+
+/** File name for an in-app download: the source's own file name, else the title (and episode). */
+export function downloadName(meta: Pick<Meta, "name" | "releaseInfo">, rs: Pick<RankedStream, "stream">, video: Pick<Video, "season" | "episode"> | null): string {
+  const hinted = rs.stream.behaviorHints?.filename?.trim();
+  if (hinted) return hinted;
+  const pad = (n?: number) => String(n ?? 0).padStart(2, "0");
+  if (video?.season != null) return `${meta.name} S${pad(video.season)}E${pad(video.episode)}`;
+  const year = meta.releaseInfo?.slice(0, 4);
+  return /^\d{4}$/.test(year ?? "") ? `${meta.name} (${year})` : meta.name;
 }

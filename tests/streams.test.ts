@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { qualityGroup, rankStreams, streamTags } from "../src/lib/streams";
+import { downloadName, qualityGroup, rankStreams, streamTags } from "../src/lib/streams";
 import type { Addon, Stream } from "../src/lib/addons";
 import { rankCapsFor } from "../src/lib/caps";
 import type { SystemCaps } from "../src/lib/tauri";
@@ -113,5 +113,17 @@ describe("rankCapsFor", () => {
   });
   it("treats every codec as CPU-decoded when hardware decoding is off", () => {
     expect(Object.values(rankCapsFor(caps, "auto", false).hwdec!).some(Boolean)).toBe(false);
+  });
+});
+
+describe("downloadName", () => {
+  const rs = (filename?: string) => ({ stream: { url: "https://x/y", behaviorHints: filename ? { filename } : undefined } as Stream });
+  it("prefers the source's file name", () => {
+    expect(downloadName({ name: "Dune" }, rs("Dune.2021.1080p.WEB-DL.mkv"), null)).toBe("Dune.2021.1080p.WEB-DL.mkv");
+  });
+  it("falls back to title and year, or the episode", () => {
+    expect(downloadName({ name: "Dune", releaseInfo: "2021" }, rs(), null)).toBe("Dune (2021)");
+    expect(downloadName({ name: "Dune", releaseInfo: "TBA" }, rs(), null)).toBe("Dune");
+    expect(downloadName({ name: "Dark" }, rs("  "), { season: 1, episode: 2 })).toBe("Dark S01E02");
   });
 });

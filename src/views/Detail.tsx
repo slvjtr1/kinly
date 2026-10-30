@@ -8,12 +8,13 @@ import { isExternalDefault, openExternally } from "../lib/extplayer";
 import { rankCapsFor, useCaps } from "../lib/caps";
 import { getMeta, getStreams, type Meta, type Video } from "../lib/addons";
 import { getProgress, inWatchlist, markWatched, progressKey, toggleWatchlist, type Progress } from "../lib/library";
-import { QUALITY_LABEL, formatBytes, qualityGroup, rankStreams, type QualityGroup, type RankedStream, type StreamTag } from "../lib/streams";
+import { QUALITY_LABEL, downloadName, formatBytes, qualityGroup, rankStreams, type QualityGroup, type RankedStream, type StreamTag } from "../lib/streams";
 import { imdbIdFor, moreLikeThis, subscribeCredentials, tmdbKey, type Recommendation } from "../lib/tmdb";
 import { trailersOf } from "../lib/trailers";
 import { useAddons } from "../lib/useAddons";
 import { useApp } from "../state";
-import { Empty, ErrorState, ImdbRating, Loading, Poster, errorMessage } from "../components/ui";
+import { Empty, ErrorState, ImdbRating, Loading, Poster, PrismHint, errorMessage } from "../components/ui";
+import { downloadStart } from "../lib/tauri";
 import { useLibraryVersion } from "./Home";
 import TrailerPlayer from "./TrailerPlayer";
 import type { PlayRequest } from "./Player";
@@ -388,7 +389,7 @@ export type SourcesMode = "play" | "download";
 
 function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; video: Video | null; mode?: SourcesMode; onClose: () => void }) {
   const { addons } = useAddons();
-  const { navigate, settings, toast } = useApp();
+  const { navigate, settings, update, toast } = useApp();
   const start = useStartPlayback();
   const [streams, setStreams] = useState<RankedStream[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -427,14 +428,25 @@ function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; vid
 
   const resume = settings.playback.resume;
   const play = useCallback((rs: RankedStream) => start(buildPlayRequest(meta, rs, video, resume)), [start, meta, video, resume]);
+  const external = settings.library.downloadExternally;
+  const setExternal = (v: boolean) => update((s) => ({ ...s, library: { ...s.library, downloadExternally: v } }));
   const download = useCallback(
     (rs: RankedStream) => {
-      if (!rs.stream.url || !/^https?:\/\//i.test(rs.stream.url)) return;
-      openUrl(rs.stream.url)
-        .then(() => toast("Downloading in your browser. It will appear in Downloads when finished."))
-        .catch((e) => toast(`Couldn't open your browser: ${errorMessage(e)}`, "error"));
+      const url = rs.stream.url;
+      if (!url || !/^https?:\/\//i.test(url)) return;
+      if (external) {
+        // Copied as well, for download managers that take a pasted link.
+        void navigator.clipboard?.writeText(url).catch(() => {});
+        openUrl(url)
+          .then(() => toast("Opened outside Kinly. The link is also copied to your clipboard."))
+          .catch((e) => toast(`Couldn't open your browser: ${errorMessage(e)}`, "error"));
+        return;
+      }
+      downloadStart(url, downloadName(meta, rs, video), rs.stream.behaviorHints?.proxyHeaders?.request)
+        .then((p) => toast(`Downloading ${p.name}. Follow it on the Downloads page.`))
+        .catch((e) => toast(`Couldn't download: ${errorMessage(e)}`, "error"));
     },
-    [toast],
+    [toast, external, meta, video],
   );
   const counts = useMemo(() => {
     const c = new Map<QualityGroup, number>();
@@ -465,7 +477,18 @@ function SourcesPanel({ meta, video, mode = "play", onClose }: { meta: Meta; vid
         ) : (
           <>
             {mode === "download" && streams.length > 0 && (
-              <p className="faint sheet-note">Downloads open in your browser and appear in Downloads when finished. Sources without a direct link can only be streamed.</p>
+              <div className="download-where">
+                <div className="segmented" role="radiogroup" aria-label="Where to download">
+                  <button role="radio" aria-checked={!external} className={external ? "" : "active"} onClick={() => setExternal(false)}>In Kinly</button>
+                  <button role="radio" aria-checked={external} className={external ? "active" : ""} onClick={() => setExternal(true)}>Outside Kinly</button>
+                </div>
+                <p className="faint sheet-note">
+                  {external
+                    ? <>The link opens in your browser and is copied, so your download manager can take it <PrismHint />.</>
+                    : "Kinly saves the video to your Downloads folder. Follow its progress on the Downloads page."}{" "}
+                  Sources without a direct link can only be streamed.
+                </p>
+              </div>
             )}
             {streams.length > 0 && (
               <div className="chips quality-chips">
@@ -543,7 +566,7 @@ const SourceRow = memo(function SourceRow({ s, best, deviceAware, mode, onPlay, 
   return (
     <div className="source-wrap">
       {row}
-      <button className="source-download" onClick={() => onDownload(s)} title="Download in your browser" aria-label={`Download ${s.label}`}>
+      <button className="source-download" onClick={() => onDownload(s)} title="Download this source" aria-label={`Download ${s.label}`}>
         <Download size={16} /> <span>Download</span>
       </button>
     </div>

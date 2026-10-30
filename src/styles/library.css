@@ -177,3 +177,38 @@ html[data-perf="maximum"] .drop-overlay {
 .avatar-link-open {
   align-self: flex-start;
 }
+
+/* In-app downloads in progress */
+.download-bar {
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.download-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.4s linear;
+}
+.download-bar.indeterminate > i {
+  width: 30%;
+  animation: download-indeterminate 1.4s ease-in-out infinite;
+}
+@keyframes download-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .download-bar.indeterminate > i {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

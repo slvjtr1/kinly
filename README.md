@@ -10,11 +10,11 @@ direct HTTP streams returned by Stremio-protocol addons that **you** install.
 
 ## Install
 
-Download Kinly 1.0.0 from the repository's
+Download Kinly 1.0.1 from the repository's
 [Releases](https://github.com/slvjtr1/kinly/releases) page. Each release lists
 SHA-256 checksums (`SHA256SUMS-linux.txt`, `SHA256SUMS-windows.txt`).
 
-**Windows 10/11 (x64):** run `Kinly_1.0.0_x64-setup.exe` (installs for the
+**Windows 10/11 (x64):** run `Kinly_1.0.1_x64-setup.exe` (installs for the
 current user) or use the `.msi`. The installer includes the video engine, FFmpeg
 and yt-dlp, and installs Microsoft's WebView2 runtime if it is missing. The
 installer is not code-signed yet, so Windows SmartScreen may ask you to confirm.
@@ -22,7 +22,7 @@ installer is not code-signed yet, so Windows SmartScreen may ask you to confirm.
 **Ubuntu 24.04 / Linux Mint 22 and similar (DEB, recommended):**
 
 ```bash
-sudo apt install ./Kinly_1.0.0_amd64.deb
+sudo apt install ./Kinly_1.0.1_amd64.deb
 ```
 
 apt pulls in `libmpv2`, `ffmpeg`, WebKitGTK and the GL libraries. Kinly then
@@ -32,8 +32,8 @@ Remove with `sudo apt remove kinly`.
 **AppImage (portable, no installation):**
 
 ```bash
-chmod +x Kinly_1.0.0_amd64.AppImage
-./Kinly_1.0.0_amd64.AppImage
+chmod +x Kinly_1.0.1_amd64.AppImage
+./Kinly_1.0.1_amd64.AppImage
 ```
 
 The AppImage bundles libmpv, FFmpeg's libraries, WebKitGTK and GTK. It needs
@@ -133,7 +133,7 @@ Kinly has no telemetry and no ads. It only contacts:
 | Service | When | What it receives |
 | --- | --- | --- |
 | The addons you install (by default Cinemeta, `v3-cinemeta.strem.io`, and OpenSubtitles v3, `opensubtitles-v3.strem.io`) | Browsing, searching, opening a title, playing | The title, episode and catalog requests the Stremio protocol defines; for subtitles, the release name and file size |
-| The artwork, subtitle and stream URLs those addons return | Showing artwork, loading subtitles, playing | Ordinary HTTP requests to whichever server the addon points at |
+| The artwork, subtitle and stream URLs those addons return | Showing artwork, loading subtitles, playing, downloading in Kinly | Ordinary HTTP requests to whichever server the addon points at |
 | IntroDB (`api.theintrodb.org`) | Playing a movie or episode | The title's TMDB/IMDb id, season and episode, and the video's duration |
 | TMDB (`api.themoviedb.org`, `image.tmdb.org`) | Only after you add your own TMDB key | Title ids, for recommendations and artwork |
 | Kinly's account service (Supabase) | Only when you sign in | Your email and password (to sign in), profiles, each profile's library (movies and series: watchlist, progress, history) and addon list, and the synced settings. Local files, their paths and thumbnails are never uploaded |

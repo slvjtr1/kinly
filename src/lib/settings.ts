@@ -51,6 +51,8 @@ export type SubStyle = {
   size: number; // mpv sub-font-size at 720p reference
   color: string; // #RRGGBB
   opacity: number; // 0..1
+  /** Off draws no outline; `outline` keeps the width for when it is turned back on. */
+  outlineOn: boolean;
   outline: number; // px
   outlineColor: string;
   shadow: number; // offset px
@@ -92,7 +94,8 @@ export type Settings = {
     /** NVIDIA RTX Video Super Resolution (Windows, RTX GPU, hardware decoding). */
     rtxSuperResolution: boolean;
   };
-  library: { watchedThreshold: number; folders: string[] };
+  /** downloadExternally: hand download links to the browser / a download manager instead of saving them in Kinly. */
+  library: { watchedThreshold: number; folders: string[]; downloadExternally: boolean };
 };
 
 export const DEFAULT_STYLE: SubStyle = {
@@ -101,6 +104,7 @@ export const DEFAULT_STYLE: SubStyle = {
   size: 50,
   color: "#ffffff",
   opacity: 1,
+  outlineOn: true,
   outline: 2.5,
   outlineColor: "#000000",
   shadow: 1.5,
@@ -130,7 +134,7 @@ export const DEFAULT_SETTINGS: Settings = {
     player: "builtin",
     rtxSuperResolution: false,
   },
-  library: { watchedThreshold: 0.9, folders: [] },
+  library: { watchedThreshold: 0.9, folders: [], downloadExternally: false },
 };
 
 const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
@@ -182,6 +186,7 @@ export function sanitizeSettings(raw: unknown): Settings {
         size: num(st.size, 20, 120, DS.size),
         color: isHex(st.color) ? st.color : DS.color,
         opacity: num(st.opacity, 0.2, 1, DS.opacity),
+        outlineOn: bool(st.outlineOn, DS.outlineOn),
         outline: num(st.outline, 0, 8, DS.outline),
         outlineColor: isHex(st.outlineColor) ? st.outlineColor : DS.outlineColor,
         shadow: num(st.shadow, 0, 8, DS.shadow),
@@ -210,6 +215,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     library: {
       watchedThreshold: num(l.watchedThreshold, 0.7, 0.98, 0.9),
       folders: Array.isArray(l.folders) ? (l.folders as unknown[]).filter((f): f is string => typeof f === "string").slice(0, 20) : [],
+      downloadExternally: bool(l.downloadExternally, false),
     },
   };
 }
@@ -233,7 +239,7 @@ export function styleToMpv(s: SubStyle): [string, string | number | boolean][] {
     ["sub-bold", s.bold],
     ["sub-font-size", s.size],
     ["sub-color", mpvColor(s.color, s.opacity)],
-    ["sub-border-size", s.background ? 0 : s.outline],
+    ["sub-border-size", s.background || !s.outlineOn ? 0 : s.outline],
     ["sub-border-color", mpvColor(s.outlineColor, 1)],
     ["sub-shadow-offset", s.background ? 0 : s.shadow],
     ["sub-shadow-color", mpvColor(s.shadowColor, s.shadowOpacity)],

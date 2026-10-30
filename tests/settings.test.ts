@@ -55,6 +55,23 @@ describe("settings", () => {
     expect(boxed["sub-back-color"]).toBe("#99000000");
   });
 
+  it("outline can be switched off without losing its width", () => {
+    const off = { ...DEFAULT_SETTINGS.subtitles.style, outlineOn: false, outline: 4 };
+    expect(Object.fromEntries(styleToMpv(off))["sub-border-size"]).toBe(0);
+    expect(Object.fromEntries(styleToMpv({ ...off, outlineOn: true }))["sub-border-size"]).toBe(4);
+    const kept = sanitizeSettings({ subtitles: { style: { outlineOn: false, outline: 4 } } }).subtitles.style;
+    expect(kept.outlineOn).toBe(false);
+    expect(kept.outline).toBe(4);
+    // Files saved before the switch existed keep their outline on.
+    expect(sanitizeSettings({ subtitles: { style: { outline: 3 } } }).subtitles.style.outlineOn).toBe(true);
+  });
+
+  it("downloads stay in Kinly unless switched to outside", () => {
+    expect(sanitizeSettings(null).library.downloadExternally).toBe(false);
+    expect(sanitizeSettings({ library: { downloadExternally: true } }).library.downloadExternally).toBe(true);
+    expect(sanitizeSettings({ library: { downloadExternally: "yes" } }).library.downloadExternally).toBe(false);
+  });
+
   it("maps playback settings", () => {
     const p = Object.fromEntries(playbackToMpv({ ...DEFAULT_SETTINGS.playback, hwdec: false, audioLanguages: ["ara", "eng"] }));
     expect(p).toEqual({ hwdec: "no", alang: "ara,eng" });

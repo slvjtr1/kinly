@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Inbox, X } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { MetaPreview } from "../lib/addons";
 import { useApp } from "../state";
 
@@ -136,6 +137,18 @@ export function ErrorState({ title, detail, onRetry }: { title: string; detail?:
 
 export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return <button className="switch" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} />;
+}
+
+const PRISM_URL = "https://github.com/FortoGraphy/prism-download-manager";
+
+/** The suggestion shown wherever downloads leave Kinly. */
+export function PrismHint() {
+  return (
+    <span className="prism-hint">
+      (We suggest using an open-source download manager, such as{" "}
+      <a href={PRISM_URL} onClick={(e) => { e.preventDefault(); void openUrl(PRISM_URL); }}>Prism</a>.)
+    </span>
+  );
 }
 
 export function errorMessage(e: unknown): string {

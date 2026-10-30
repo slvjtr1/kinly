@@ -834,11 +834,14 @@ function SubtitlesTab({ sess, s, status, style, setStyle, onSelect, onLoadFile, 
         <Field label="Text opacity" hint={`${Math.round(style.opacity * 100)}%`}>
           <Range min={0.2} max={1} step={0.05} value={style.opacity} onChange={(v) => setStyle({ opacity: v })} label="Text opacity" />
         </Field>
-        <Field label="Outline colour" disabled={style.background} hint={style.background ? "Off with the box" : undefined}>
-          <Swatches value={style.outlineColor} options={["#000000", "#1f2933", "#3b2a00", "#0b2c4a"]} onChange={(c) => setStyle({ outlineColor: c })} label="Outline colour" disabled={style.background} />
+        <Field label="Outline" disabled={style.background} hint={style.background ? "Off with the box" : undefined}>
+          <Switch checked={style.outlineOn} onChange={(v) => setStyle({ outlineOn: v })} label="Outline" />
         </Field>
-        <Field label="Outline width" hint={style.outline} disabled={style.background}>
-          <Range min={0} max={6} step={0.5} value={style.outline} onChange={(v) => setStyle({ outline: v })} label="Outline width" disabled={style.background} />
+        <Field label="Outline colour" disabled={style.background || !style.outlineOn}>
+          <Swatches value={style.outlineColor} options={["#000000", "#1f2933", "#3b2a00", "#0b2c4a"]} onChange={(c) => setStyle({ outlineColor: c })} label="Outline colour" disabled={style.background || !style.outlineOn} />
+        </Field>
+        <Field label="Outline width" hint={style.outline} disabled={style.background || !style.outlineOn}>
+          <Range min={0} max={6} step={0.5} value={style.outline} onChange={(v) => setStyle({ outline: v })} label="Outline width" disabled={style.background || !style.outlineOn} />
         </Field>
         <Field label="Background box"><Switch checked={style.background} onChange={(v) => setStyle({ background: v })} label="Background box" /></Field>
         <Field label="Box opacity" hint={`${Math.round(style.backgroundOpacity * 100)}%`} disabled={!style.background}>

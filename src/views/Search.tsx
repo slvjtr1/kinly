@@ -2,7 +2,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import { Search as SearchIcon } from "lucide-react";
 import { searchAll, type CatalogDef, type MetaPreview, type Addon } from "../lib/addons";
 import { useAddons } from "../lib/useAddons";
-import { Empty, GridSkeleton, MetaCard, useOpenMeta } from "../components/ui";
+import { Empty, MetaCard, RowSkeleton, useOpenMeta } from "../components/ui";
 
 type Group = { addon: Addon; catalog: CatalogDef; items: MetaPreview[] };
 
@@ -57,7 +57,7 @@ export default function Search({ initial }: { initial: string }) {
           aria-label="Search"
         />
       </div>
-      {busy && !groups && <GridSkeleton count={8} />}
+      {busy && !groups && <RowSkeleton />}
       {groups && groups.length === 0 && !busy && <Empty title={`No results for “${query.trim()}”`}>Try a different spelling or the original title.</Empty>}
       {!groups && !busy && <Empty title="Search across your sources">Type at least two characters.</Empty>}
       {groups?.map((g) => (
@@ -66,7 +66,8 @@ export default function Search({ initial }: { initial: string }) {
             {g.catalog.type === "movie" ? "Movies" : g.catalog.type === "series" ? "Series" : g.catalog.type}
             <span className="faint" style={{ fontWeight: 400, fontSize: 13 }}>{g.addon.manifest.name}</span>
           </div>
-          <div className="grid">
+          {/* One horizontal row per source, like Home: long result lists scroll sideways instead of stacking into a tall page. */}
+          <div className="row">
             {g.items.map((m) => (
               <MetaCard key={m.id} meta={m} onOpen={open} />
             ))}

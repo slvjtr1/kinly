@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { Download, Film, FolderOpen, FolderPlus, Play, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Download, Film, FolderOpen, FolderPlus, Play, RefreshCw, X } from "lucide-react";
 import { getProgress, progressKey } from "../lib/library";
 import { parseRelease } from "../lib/release";
 import { formatBytes } from "../lib/streams";
-import { downloadsList, onDownloadFinished, type DownloadsListing, type LocalFile } from "../lib/tauri";
+import {
+  downloadCancel, downloadsActive, downloadsList, onDownloadFinished, onDownloadProgress, type DownloadProgress, type DownloadsListing, type LocalFile,
+} from "../lib/tauri";
 import { useApp } from "../state";
 import { Empty, Loading, errorMessage } from "../components/ui";
 import { useLibraryVersion } from "./Home";
@@ -68,6 +70,45 @@ export function useDownloadNotifications() {
   }, [toast]);
 }
 
+/** A download with its speed in bytes/s, smoothed across progress updates. */
+type ActiveDownload = DownloadProgress & { at: number; rate: number };
+
+/** In-app downloads that are running or failed, kept current from `downloads:progress`. */
+function useActiveDownloads(onDone: () => void): ActiveDownload[] {
+  const [items, setItems] = useState<ActiveDownload[]>([]);
+  const done = useRef(onDone);
+  done.current = onDone;
+  useEffect(() => {
+    let live = true;
+    let unlisten: (() => void) | undefined;
+    onDownloadProgress((p) => {
+      if (p.state === "done") done.current();
+      setItems((cur) => {
+        const rest = cur.filter((x) => x.id !== p.id);
+        if (p.state !== "running" && p.state !== "failed") return rest;
+        const prev = cur.find((x) => x.id === p.id);
+        const at = Date.now();
+        let rate = prev?.rate ?? 0;
+        if (prev && at > prev.at && p.received > prev.received) {
+          const instant = ((p.received - prev.received) * 1000) / (at - prev.at);
+          rate = rate ? rate * 0.7 + instant * 0.3 : instant;
+        }
+        return [...rest, { ...p, at, rate }].sort((a, b) => a.id - b.id);
+      });
+    })
+      .then((u) => (live ? (unlisten = u) : u()))
+      .catch(() => {});
+    downloadsActive()
+      .then((a) => live && setItems((cur) => (cur.length ? cur : a.map((p) => ({ ...p, at: Date.now(), rate: 0 })))))
+      .catch(() => {});
+    return () => {
+      live = false;
+      unlisten?.();
+    };
+  }, []);
+  return items;
+}
+
 const ago = (sec: number) => {
   const d = Date.now() / 1000 - sec;
   if (d < 90) return "just now";
@@ -89,6 +130,7 @@ export default function Downloads() {
   const [nonce, setNonce] = useState(0);
   const [dragging, setDragging] = useState(false);
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
+  const active = useActiveDownloads(refresh);
 
   useEffect(() => {
     let live = true;
@@ -180,6 +222,19 @@ export default function Downloads() {
       </div>
       {error && <p className="error-text">Could not list your downloads: {error}</p>}
 
+      {active.length > 0 && (
+        <section className="downloads-section">
+          <div className="section-title downloads-section-title">
+            <Download size={18} />
+            <span>In progress</span>
+            <span className="faint downloads-count">{active.filter((d) => d.state === "running").length} running</span>
+          </div>
+          <div className="item-list">
+            {active.map((d) => <ActiveRow key={d.id} d={d} />)}
+          </div>
+        </section>
+      )}
+
       {!listing ? (
         <Loading label="Looking for videos…" />
       ) : (
@@ -199,7 +254,7 @@ export default function Downloads() {
             ) : s.files.length === 0 ? (
               s.key === "downloads" ? (
                 <Empty title={filter ? "No matching downloads" : listing.dir ? "No finished video downloads yet" : "No download folder found"}>
-                  {!filter && "Use Download on a source in a title's source list. Your browser saves it, and it shows up here once it is complete."}
+                  {!filter && "Use Download on a source in a title's source list. It shows up here once it is complete."}
                 </Empty>
               ) : (
                 <p className="faint">No videos in this folder{filter ? " match the filter" : ""}.</p>
@@ -217,6 +272,36 @@ export default function Downloads() {
           <div><Film size={40} /><span>Drop a video to play it</span></div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ActiveRow({ d }: { d: ActiveDownload }) {
+  const failed = d.state === "failed";
+  const pct = d.total > 0 ? Math.min(100, (d.received / d.total) * 100) : null;
+  const rate = d.state === "running" ? d.rate : 0;
+  const detail = failed
+    ? d.error ?? "Download failed"
+    : [d.total ? `${formatBytes(d.received) || "0 MB"} of ${formatBytes(d.total)}` : formatBytes(d.received) || "Starting…", pct != null ? `${Math.floor(pct)}%` : "", rate > 0 ? `${formatBytes(rate) || "<1 MB"}/s` : ""]
+        .filter(Boolean)
+        .join(" · ");
+  return (
+    <div className="item download-active">
+      <div className="item-icon">{failed ? <AlertTriangle size={22} /> : <Download size={22} />}</div>
+      <div className="item-main">
+        <div className="item-title">{d.name}</div>
+        <div className={`item-sub ${failed ? "error-text" : ""}`}>{detail}</div>
+        {!failed && (
+          <div className={`download-bar ${pct == null ? "indeterminate" : ""}`} role="progressbar" aria-valuenow={pct ?? undefined} aria-valuemin={0} aria-valuemax={100} aria-label={`Downloading ${d.name}`}>
+            <i style={pct != null ? { width: `${pct}%` } : undefined} />
+          </div>
+        )}
+      </div>
+      <div className="item-actions">
+        <button className="icon-btn" onClick={() => void downloadCancel(d.id)} aria-label={failed ? `Dismiss ${d.name}` : `Cancel ${d.name}`} title={failed ? "Dismiss" : "Cancel download"}>
+          <X size={16} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ import { useAddons } from "../lib/useAddons";
 import { appInfo, type AppInfo } from "../lib/tauri";
 import { looksLikeTmdbKey, setTmdbKey, subscribeCredentials, testTmdbKey, tmdbKey } from "../lib/tmdb";
 import { useApp } from "../state";
-import { Switch, errorMessage } from "../components/ui";
+import { PrismHint, Switch, errorMessage } from "../components/ui";
 import { AccountSettings, TraktSettings } from "./AccountSettings";
 
 type SectionId = "appearance" | "playback" | "subtitles" | "languages" | "addons" | "connections" | "account" | "library" | "about";
@@ -137,7 +137,7 @@ function Appearance() {
 
 function SubtitlePreview({ st }: { st: SubStyle }) {
   const rgba = (hex: string, a: number) => `${hex}${Math.round(a * 255).toString(16).padStart(2, "0")}`;
-  const o = st.background ? 0 : st.outline * 0.6;
+  const o = st.background || !st.outlineOn ? 0 : st.outline * 0.6;
   const outline = o > 0 ? [...Array(16)].map((_, i) => `${(Math.cos((i / 16) * 2 * Math.PI) * o).toFixed(2)}px ${(Math.sin((i / 16) * 2 * Math.PI) * o).toFixed(2)}px 0 ${st.outlineColor}`) : [];
   const shadow = !st.background && st.shadow > 0 ? [`${st.shadow * 0.8}px ${st.shadow * 0.8}px 0 ${rgba(st.shadowColor, st.shadowOpacity)}`] : [];
   const line = {
@@ -194,9 +194,10 @@ function Subtitles() {
         <input type="range" min={0.2} max={1} step={0.05} value={st.opacity} onChange={(e) => setStyle({ opacity: Number(e.target.value) })} aria-label="Text opacity" />
       </Row>
       <Row label="Outline" help={st.background ? "Not used while the background box is on." : undefined}>
-        <input type="color" value={st.outlineColor} onChange={(e) => setStyle({ outlineColor: e.target.value })} aria-label="Outline colour" disabled={st.background} />
-        <input type="range" min={0} max={6} step={0.5} value={st.outline} onChange={(e) => setStyle({ outline: Number(e.target.value) })} aria-label="Outline size" disabled={st.background} />
+        <input type="color" value={st.outlineColor} onChange={(e) => setStyle({ outlineColor: e.target.value })} aria-label="Outline colour" disabled={st.background || !st.outlineOn} />
+        <input type="range" min={0} max={6} step={0.5} value={st.outline} onChange={(e) => setStyle({ outline: Number(e.target.value) })} aria-label="Outline size" disabled={st.background || !st.outlineOn} />
         <span className="range-value">{st.outline}</span>
+        <Switch checked={st.outlineOn} onChange={(v) => setStyle({ outlineOn: v })} label="Outline" />
       </Row>
       <Row label="Shadow" help={st.background ? "Not used while the background box is on." : "Colour, strength and distance."}>
         <input type="color" value={st.shadowColor} onChange={(e) => setStyle({ shadowColor: e.target.value })} aria-label="Shadow colour" disabled={st.background} />
@@ -396,11 +397,16 @@ function Connections() {
 function LibrarySection() {
   const [l, set] = useSection("library");
   return (
-    <Row label="Mark as watched after" help="Progress beyond this point counts as watched and leaves Continue watching.">
-      <select className="select" value={l.watchedThreshold} onChange={(e) => set({ watchedThreshold: Number(e.target.value) })} aria-label="Watched threshold">
-        {[0.8, 0.85, 0.9, 0.95].map((v) => <option key={v} value={v}>{Math.round(v * 100)}%</option>)}
-      </select>
-    </Row>
+    <>
+      <Row label="Mark as watched after" help="Progress beyond this point counts as watched and leaves Continue watching.">
+        <select className="select" value={l.watchedThreshold} onChange={(e) => set({ watchedThreshold: Number(e.target.value) })} aria-label="Watched threshold">
+          {[0.8, 0.85, 0.9, 0.95].map((v) => <option key={v} value={v}>{Math.round(v * 100)}%</option>)}
+        </select>
+      </Row>
+      <Row label="Download outside Kinly" help={<>Off: Kinly saves downloads to your Downloads folder and shows their progress on the Downloads page. On: the link opens in your browser and is copied, for your own download manager <PrismHint />.</>}>
+        <Switch checked={l.downloadExternally} onChange={(v) => set({ downloadExternally: v })} label="Download outside Kinly" />
+      </Row>
+    </>
   );
 }
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1 — 2026-10-30
+
+### Changed
+- Search results are shown as one horizontal row per source, like Home, instead
+  of a long grid; posters further along the row load as you scroll to them.
+- Downloads now happen inside Kinly: the video is saved to your Downloads folder
+  with progress, speed and Cancel on the Downloads page. "Outside Kinly" (in the
+  download sheet or Settings → Library) keeps the old behaviour and opens the
+  link in your browser and copies it, for an open-source download manager such
+  as Prism.
+- Subtitle outline has an on/off switch (Settings → Subtitles and the player's
+  subtitle panel); its width is kept for when it is turned back on.
+
 ## 1.0.0 — 2026-10-30
 
 First stable release, for Linux (DEB, AppImage) and Windows x64 (installer, MSI).

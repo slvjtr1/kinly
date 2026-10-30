@@ -1,6 +1,6 @@
 [package]
 name = "kinly"
-version = "1.0.0"
+version = "1.0.1"
 description = "Kinly — a lean media center for movies and series"
 authors = ["Kinly contributors"]
 license = "MIT"

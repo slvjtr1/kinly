@@ -134,6 +134,23 @@ export const downloadsList = (extra: string[]) => invoke<DownloadsListing>("down
 export const onDownloadFinished = (cb: (f: LocalFile) => void): Promise<UnlistenFn> =>
   listen<LocalFile>("downloads:new", (e) => cb(e.payload));
 
+// In-app downloads (download.rs). `total` is 0 when the server doesn't send a size.
+export type DownloadProgress = {
+  id: number;
+  name: string;
+  received: number;
+  total: number;
+  state: "running" | "done" | "failed" | "cancelled";
+  error: string | null;
+};
+export const downloadStart = (url: string, name: string, headers?: Record<string, string>) =>
+  invoke<DownloadProgress>("download_start", { url, name, headers });
+/** Cancels a running download or dismisses a failed one. */
+export const downloadCancel = (id: number) => invoke<void>("download_cancel", { id });
+export const downloadsActive = () => invoke<DownloadProgress[]>("downloads_active");
+export const onDownloadProgress = (cb: (p: DownloadProgress) => void): Promise<UnlistenFn> =>
+  listen<DownloadProgress>("downloads:progress", (e) => cb(e.payload));
+
 // Device capabilities (probed once per session)
 export type GpuCaps = {
   vendor: "nvidia" | "amd" | "intel" | "other";
