@@ -1,0 +1,179 @@
+/* Library-area styles: Downloads, source downloads, profile avatars.
+   Uses the theme tokens from app.css; keeps global design in app.css untouched. */
+
+/* ------------------------------------------------------------ Sources: Download */
+
+.source-wrap {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+.source-wrap > .source {
+  flex: 1;
+  min-width: 0;
+}
+/* Row layout with a download button: [details][Download][play]. The play circle is shifted into
+   the right padding so it stays the rightmost control. */
+.source.has-download {
+  padding-right: 124px;
+}
+.source.has-download .source-play {
+  transform: translateX(110px);
+}
+.source-download {
+  position: absolute;
+  right: 62px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 104px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--surface-3) 80%, transparent);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.source-download:hover,
+.source-download:focus-visible {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: var(--surface-3);
+}
+@media (max-width: 640px) {
+  .source.has-download {
+    padding-right: 54px;
+  }
+  .source.has-download .source-play {
+    transform: translateX(40px);
+  }
+  .source-download {
+    width: 34px;
+    padding: 0;
+  }
+  .source-download span {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------ Downloads page */
+
+.downloads-lede {
+  margin: -6px 0 16px;
+  max-width: 80ch;
+}
+.downloads-lede code {
+  font-size: 0.92em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+.downloads-actions {
+  margin-top: 0;
+  margin-bottom: 20px;
+  align-items: center;
+}
+.downloads-filter {
+  margin-left: auto;
+  width: 240px;
+}
+.downloads-section {
+  margin-bottom: 26px;
+}
+.downloads-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.downloads-count {
+  font-weight: 400;
+  font-size: 13px;
+}
+.downloads-path {
+  font-weight: 400;
+  font-size: 12.5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+html[data-perf="maximum"] .drop-overlay {
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(4px);
+}
+.drop-overlay > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 52px;
+  border-radius: 24px;
+  border: 2px dashed var(--accent);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 18px;
+  background: var(--surface-2);
+}
+
+/* ------------------------------------------------------------ Profile avatars */
+
+.avatar.avatar-art {
+  overflow: hidden;
+  background: var(--surface-3);
+}
+.avatar-art > svg,
+.avatar-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.avatar-art > img {
+  object-fit: cover;
+}
+.avatar-preview-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.avatar-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.avatar-link-hint {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.avatar-link-hint.bad {
+  color: var(--danger);
+}
+.avatar-link-open {
+  align-self: flex-start;
+}

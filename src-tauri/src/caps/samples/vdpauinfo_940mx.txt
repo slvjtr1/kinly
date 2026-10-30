@@ -1,0 +1,3 @@
+GPU at BusId 0x1 doesn't have a supported video decoder
+Error creating VDPAU device: 1
+display: :0   screen: 0

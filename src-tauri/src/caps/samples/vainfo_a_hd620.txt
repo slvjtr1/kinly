@@ -1,0 +1,249 @@
+libva info: VA-API version 1.20.0
+libva info: Trying to open /usr/lib/x86_64-linux-gnu/dri/iHD_drv_video.so
+libva info: Found init function __vaDriverInit_1_20
+libva info: va_openDriver() returns 0
+vainfo: VA-API version: 1.20 (libva 2.12.0)
+vainfo: Driver version: Intel iHD driver for Intel(R) Gen Graphics - 24.1.0 ()
+vainfo: Supported config attributes per profile/entrypoint pair
+VAProfileMPEG2Simple/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING_NONE
+    VAConfigAttribMaxPictureWidth          : 2048
+    VAConfigAttribMaxPictureHeight         : 2048
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileMPEG2Main/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING_NONE
+    VAConfigAttribMaxPictureWidth          : 2048
+    VAConfigAttribMaxPictureHeight         : 2048
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileH264Main/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+                                             VA_DEC_SLICE_MODE_BASE
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileH264Main/VAEntrypointEncSliceLP
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+    VAConfigAttribRateControl              : VA_RC_CQP
+    VAConfigAttribEncPackedHeaders         : VA_ENC_PACKED_HEADER_SEQUENCE
+                                             VA_ENC_PACKED_HEADER_PICTURE
+                                             VA_ENC_PACKED_HEADER_SLICE
+                                             VA_ENC_PACKED_HEADER_MISC
+                                             VA_ENC_PACKED_HEADER_RAW_DATA
+    VAConfigAttribEncInterlaced            : VA_ENC_INTERLACED_NONE
+    VAConfigAttribEncMaxRefFrames          : l0=3
+                                             l1=0
+    VAConfigAttribEncMaxSlices             : 3
+    VAConfigAttribEncSliceStructure        : VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS
+                                             VA_ENC_SLICE_STRUCTURE_MAX_SLICE_SIZE
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribEncQualityRange          : number of supported quality levels is 7
+    VAConfigAttribEncQuantization          : VA_ENC_QUANTIZATION_TRELLIS_SUPPORTED
+    VAConfigAttribEncIntraRefresh          : VA_ENC_INTRA_REFRESH_ROLLING_COLUMN
+                                             VA_ENC_INTRA_REFRESH_ROLLING_ROW
+    VAConfigAttribEncSkipFrame             : supported
+    VAConfigAttribEncROI                   : num_roi_regions=3
+                                             roi_rc_priority_support=0
+                                             roi_rc_qp_delta_support=1
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_ENCODE
+    VAConfigAttribEncDirtyRect             : number of supported regions is 4
+    VAConfigAttribEncParallelRateControl   : number of supported layers is 1
+    VAConfigAttribFEIMVPredictors          : number of supported MV predictors is 4
+    VAConfigAttribMaxFrameSize             : max_frame_size=1
+                                             multiple_pass=1
+
+VAProfileH264High/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+                                             VA_DEC_SLICE_MODE_BASE
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileH264High/VAEntrypointEncSliceLP
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+    VAConfigAttribRateControl              : VA_RC_CQP
+    VAConfigAttribEncPackedHeaders         : VA_ENC_PACKED_HEADER_SEQUENCE
+                                             VA_ENC_PACKED_HEADER_PICTURE
+                                             VA_ENC_PACKED_HEADER_SLICE
+                                             VA_ENC_PACKED_HEADER_MISC
+                                             VA_ENC_PACKED_HEADER_RAW_DATA
+    VAConfigAttribEncInterlaced            : VA_ENC_INTERLACED_NONE
+    VAConfigAttribEncMaxRefFrames          : l0=3
+                                             l1=0
+    VAConfigAttribEncMaxSlices             : 3
+    VAConfigAttribEncSliceStructure        : VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS
+                                             VA_ENC_SLICE_STRUCTURE_MAX_SLICE_SIZE
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribEncQualityRange          : number of supported quality levels is 7
+    VAConfigAttribEncQuantization          : VA_ENC_QUANTIZATION_TRELLIS_SUPPORTED
+    VAConfigAttribEncIntraRefresh          : VA_ENC_INTRA_REFRESH_ROLLING_COLUMN
+                                             VA_ENC_INTRA_REFRESH_ROLLING_ROW
+    VAConfigAttribEncSkipFrame             : supported
+    VAConfigAttribEncROI                   : num_roi_regions=3
+                                             roi_rc_priority_support=0
+                                             roi_rc_qp_delta_support=1
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_ENCODE
+    VAConfigAttribEncDirtyRect             : number of supported regions is 4
+    VAConfigAttribEncParallelRateControl   : number of supported layers is 1
+    VAConfigAttribFEIMVPredictors          : number of supported MV predictors is 4
+    VAConfigAttribMaxFrameSize             : max_frame_size=1
+                                             multiple_pass=1
+
+VAProfileJPEGBaseline/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_YUV444
+                                             VA_RT_FORMAT_YUV411
+                                             VA_RT_FORMAT_YUV400
+                                             VA_RT_FORMAT_RGB16
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+    VAConfigAttribDecJPEG                  : VA_ROTATION_NONE
+                                             VA_ROTATION_90
+                                             VA_ROTATION_180
+                                             VA_ROTATION_270
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING_NONE
+    VAConfigAttribMaxPictureWidth          : 16384
+    VAConfigAttribMaxPictureHeight         : 16384
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileJPEGBaseline/VAEntrypointEncPicture
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_YUV444
+                                             VA_RT_FORMAT_YUV411
+                                             VA_RT_FORMAT_YUV400
+                                             VA_RT_FORMAT_RGB16
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribEncPackedHeaders         : VA_ENC_PACKED_HEADER_RAW_DATA
+    VAConfigAttribMaxPictureWidth          : 16384
+    VAConfigAttribMaxPictureHeight         : 16384
+    VAConfigAttribEncJPEG                  : rithmatic_coding_mode=0
+                                             progressive_dct_mode=0
+                                             non_interleaved_mode=0
+                                             differential_mode=0
+                                             differential_mode=0
+                                             max_num_components=3
+                                             max_num_scans=1
+                                             max_num_huffman_tables=2
+                                             max_num_quantization_tables=3
+    VAConfigAttribEncQualityRange          : number of supported quality levels is 1
+
+VAProfileH264ConstrainedBaseline/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+                                             VA_DEC_SLICE_MODE_BASE
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileH264ConstrainedBaseline/VAEntrypointEncSliceLP
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+    VAConfigAttribRateControl              : VA_RC_CQP
+    VAConfigAttribEncPackedHeaders         : VA_ENC_PACKED_HEADER_SEQUENCE
+                                             VA_ENC_PACKED_HEADER_PICTURE
+                                             VA_ENC_PACKED_HEADER_SLICE
+                                             VA_ENC_PACKED_HEADER_MISC
+                                             VA_ENC_PACKED_HEADER_RAW_DATA
+    VAConfigAttribEncInterlaced            : VA_ENC_INTERLACED_NONE
+    VAConfigAttribEncMaxRefFrames          : l0=3
+                                             l1=0
+    VAConfigAttribEncMaxSlices             : 3
+    VAConfigAttribEncSliceStructure        : VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS
+                                             VA_ENC_SLICE_STRUCTURE_MAX_SLICE_SIZE
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribEncQualityRange          : number of supported quality levels is 7
+    VAConfigAttribEncQuantization          : VA_ENC_QUANTIZATION_TRELLIS_SUPPORTED
+    VAConfigAttribEncIntraRefresh          : VA_ENC_INTRA_REFRESH_ROLLING_COLUMN
+                                             VA_ENC_INTRA_REFRESH_ROLLING_ROW
+    VAConfigAttribEncSkipFrame             : supported
+    VAConfigAttribEncROI                   : num_roi_regions=3
+                                             roi_rc_priority_support=0
+                                             roi_rc_qp_delta_support=1
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_ENCODE
+    VAConfigAttribEncDirtyRect             : number of supported regions is 4
+    VAConfigAttribEncParallelRateControl   : number of supported layers is 1
+    VAConfigAttribFEIMVPredictors          : number of supported MV predictors is 4
+    VAConfigAttribMaxFrameSize             : max_frame_size=1
+                                             multiple_pass=1
+
+VAProfileVP8Version0_3/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING_NONE
+    VAConfigAttribMaxPictureWidth          : 4096
+    VAConfigAttribMaxPictureHeight         : 4096
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileHEVCMain/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_RGB32
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING
+    VAConfigAttribMaxPictureWidth          : 8192
+    VAConfigAttribMaxPictureHeight         : 8192
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileHEVCMain10/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV420_10
+                                             VA_RT_FORMAT_YUV420_10BPP
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING
+    VAConfigAttribMaxPictureWidth          : 8192
+    VAConfigAttribMaxPictureHeight         : 8192
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileVP9Profile0/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_YUV420_10
+                                             VA_RT_FORMAT_RGB32
+                                             VA_RT_FORMAT_YUV420_10BPP
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+                                             VA_DEC_SLICE_MODE_BASE
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING_NONE
+    VAConfigAttribMaxPictureWidth          : 8192
+    VAConfigAttribMaxPictureHeight         : 8192
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+
+VAProfileVP9Profile2/VAEntrypointVLD
+    VAConfigAttribRTFormat                 : VA_RT_FORMAT_YUV420
+                                             VA_RT_FORMAT_YUV422
+                                             VA_RT_FORMAT_YUV420_10
+                                             VA_RT_FORMAT_RGB32
+                                             VA_RT_FORMAT_YUV420_10BPP
+    VAConfigAttribDecSliceMode             : VA_DEC_SLICE_MODE_NORMAL
+                                             VA_DEC_SLICE_MODE_BASE
+    VAConfigAttribDecProcessing            : VA_DEC_PROCESSING_NONE
+    VAConfigAttribMaxPictureWidth          : 8192
+    VAConfigAttribMaxPictureHeight         : 8192
+    VAConfigAttribProcessingRate           : VA_PROCESSING_RATE_DECODE
+

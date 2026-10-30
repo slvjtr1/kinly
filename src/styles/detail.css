@@ -1,0 +1,865 @@
+/* Title page (Detail) and the trailer layer. Theme tokens come from app.css; only transform and
+   opacity animate. Sized to work from 1366×768 up. */
+
+/* ------------------------------------------------------------ Hero */
+
+.tp-hero {
+  position: relative;
+  min-height: clamp(540px, 86vh, 820px);
+  padding: calc(var(--topbar) + 14px) var(--gutter) 34px;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+.tp-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.tp-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+  animation: fade-in 0.5s ease-out;
+}
+.tp-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 78%, transparent) 26%, color-mix(in srgb, var(--bg) 25%, transparent) 58%, transparent 80%),
+    linear-gradient(0deg, var(--bg) 1%, color-mix(in srgb, var(--bg) 55%, transparent) 24%, transparent 52%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent), transparent 22%);
+}
+.tp-hero-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.tp-hero .back-btn {
+  margin-bottom: 18px;
+}
+.tp-hero-main {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+}
+.tp-copy {
+  max-width: 680px;
+  min-width: 0;
+  animation: tp-rise 0.45s ease-out both;
+}
+/* Opacity only: WebKitGTK on Kinly's compositing path does not present transform animations. */
+@keyframes tp-rise {
+  from {
+    opacity: 0;
+  }
+}
+html[data-perf="performance"] .tp-copy {
+  animation: none;
+}
+.tp-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.tp-kicker span {
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.tp-kicker span::before {
+  content: "·";
+  margin-right: 10px;
+  color: var(--text-faint);
+}
+.tp-logo {
+  display: block;
+  max-width: min(460px, 86%);
+  max-height: 150px;
+  object-fit: contain;
+  object-position: left bottom;
+  margin-bottom: 18px;
+  filter: drop-shadow(0 6px 26px #0008);
+}
+[data-theme="daylight"] .tp-logo {
+  filter: drop-shadow(0 2px 10px #0004);
+}
+.tp-title {
+  font-size: clamp(38px, 4.6vw, 60px);
+  font-weight: 800;
+  letter-spacing: -1.6px;
+  line-height: 1.02;
+  margin: 0 0 16px;
+  text-wrap: balance;
+}
+.tp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 0;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 14px;
+}
+.tp-meta > * + *::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  margin: 0 11px;
+  vertical-align: middle;
+}
+.tp-meta > .imdb::before,
+.tp-meta > .tp-imdb-link::before {
+  display: none;
+}
+.tp-meta > .imdb {
+  margin-left: 14px;
+}
+.tp-meta > :first-child.imdb {
+  margin-left: 0;
+}
+.tp-imdb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tp-imdb-link:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--warn) 60%, transparent);
+}
+.tp-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tp-genres span {
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border: 1px solid var(--glass-border);
+}
+.tp-synopsis {
+  margin: 16px 0 0;
+  max-width: 640px;
+  color: color-mix(in srgb, var(--text) 84%, transparent);
+  font-size: 15px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Actions: Play and Trailer as pills, then round icon actions with a label under them. */
+.tp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 14px;
+  margin-top: 24px;
+}
+.tp-play {
+  min-width: 168px;
+}
+.tp-icon-action {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.tp-icon-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.tp-icon-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  transition: background-color 0.15s, border-color 0.15s, transform 0.12s;
+}
+.tp-icon-action:hover:not(:disabled) .tp-icon-circle {
+  background: color-mix(in srgb, var(--surface-3) 85%, transparent);
+  border-color: color-mix(in srgb, var(--text) 30%, transparent);
+}
+.tp-icon-action:active:not(:disabled) .tp-icon-circle {
+  transform: scale(0.94);
+}
+.tp-icon-action.active .tp-icon-circle {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, color-mix(in srgb, var(--surface) 60%, transparent));
+}
+.tp-icon-action:focus-visible {
+  outline: none;
+}
+.tp-icon-action:focus-visible .tp-icon-circle {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tp-icon-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.tp-resume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.tp-resume-bar,
+.tp-season-bar {
+  width: 220px;
+  height: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+  overflow: hidden;
+}
+.tp-resume-bar > i,
+.tp-season-bar > i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transform-origin: left center;
+}
+.tp-poster {
+  display: none;
+  width: 190px;
+  flex: none;
+}
+.tp-poster .poster {
+  box-shadow: 0 30px 60px -22px #000c, inset 0 0 0 1px var(--glass-border);
+}
+/* The poster joins the hero on wide windows, or whenever there is no backdrop. */
+@media (min-width: 1500px) {
+  .tp-poster {
+    display: block;
+  }
+}
+.tp-hero:not(:has(.tp-backdrop)) .tp-poster {
+  display: block;
+}
+@media (max-height: 800px) {
+  .tp-hero {
+    min-height: clamp(520px, 88vh, 700px);
+    padding-bottom: 26px;
+  }
+  .tp-logo {
+    max-height: 112px;
+    margin-bottom: 14px;
+  }
+  .tp-synopsis {
+    margin-top: 12px;
+  }
+  .tp-actions {
+    margin-top: 18px;
+  }
+}
+
+/* ------------------------------------------------------------ Body sections */
+
+.page.tp-body {
+  padding-top: 6px;
+}
+.tp-section {
+  margin-top: 34px;
+}
+.tp-section:first-child {
+  margin-top: 8px;
+}
+.tp-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.tp-section-head h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.tp-season-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.tp-season-progress .tp-season-bar {
+  width: 160px;
+}
+
+/* Season picker: a scrollable segmented strip. */
+.tp-seasons {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  max-width: 100%;
+  width: max-content;
+  overflow-x: auto;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  scrollbar-width: none;
+}
+.tp-seasons::-webkit-scrollbar {
+  display: none;
+}
+.tp-season {
+  flex: none;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.tp-season:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.tp-season.active {
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+/* Episodes */
+.tp-episodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 540px), 1fr));
+  gap: 10px 18px;
+}
+.tp-ep {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-radius: 16px;
+  contain: layout style;
+  transition: background-color 0.15s;
+}
+.tp-ep:hover {
+  background: var(--hover);
+}
+.tp-ep.current {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.tp-ep-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 16px;
+  padding: 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 16px;
+}
+.tp-ep-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+.tp-ep-thumb {
+  position: relative;
+  flex: none;
+  width: 200px;
+  aspect-ratio: 16 / 9;
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.tp-ep-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tp-ep-thumb-num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--text-faint);
+}
+.tp-ep-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.18s, transform 0.18s;
+}
+.tp-ep-main:hover .tp-ep-play,
+.tp-ep-main:focus-visible .tp-ep-play {
+  opacity: 1;
+  transform: none;
+}
+.tp-ep.watched .tp-ep-thumb img {
+  opacity: 0.55;
+}
+.tp-ep-progress {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 7px;
+  height: 3px;
+  border-radius: 3px;
+  background: #fff4;
+  overflow: hidden;
+}
+.tp-ep-progress > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+}
+.tp-ep-text {
+  min-width: 0;
+  padding: 2px 34px 2px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tp-ep-title {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-weight: 650;
+  color: var(--text);
+  min-width: 0;
+}
+.tp-ep-num {
+  flex: none;
+  color: var(--accent);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.tp-ep-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tp-ep-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.tp-ep-next,
+.tp-ep-upcoming {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tp-ep-next {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+.tp-ep-upcoming {
+  color: var(--text-dim);
+  background: var(--surface-3);
+}
+.tp-ep-overview {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tp-ep-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.tp-ep-check:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--text) 30%, transparent);
+}
+.tp-ep-check.on {
+  color: var(--accent-ink);
+  background: var(--ok);
+  border-color: transparent;
+}
+@media (max-width: 760px) {
+  .tp-ep-thumb {
+    width: 136px;
+  }
+}
+
+/* Cast & crew */
+.tp-cast {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  scrollbar-width: thin;
+}
+.tp-person {
+  flex: none;
+  width: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.tp-person:hover {
+  background: var(--hover);
+}
+.tp-avatar {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--text) 12%, transparent), transparent 60%),
+    linear-gradient(140deg, color-mix(in oklab, var(--accent) 34%, hsl(var(--h, 0) 45% 40%)), var(--surface-3));
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.tp-person-name {
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tp-person-role {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* About */
+.tp-about {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px 28px;
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+}
+.tp-about div {
+  min-width: 0;
+}
+.tp-about dt {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.tp-about dd {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* Sources sheet, download mode */
+.sheet-note {
+  font-size: 12.5px;
+  margin: 0;
+  padding: 0 20px 10px;
+}
+
+/* ------------------------------------------------------------ Trailer layer */
+
+/* While a trailer plays in the built-in player, the app underneath stays mounted but is not
+   painted, so the video surface under the transparent webview shows through. */
+body.trailer-open #root {
+  visibility: hidden;
+}
+.trailer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  color: var(--text);
+}
+.trailer-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.trailer-name {
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trailer-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.trailer-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+  animation: fade-in 0.2s ease-out;
+}
+.trailer-loading img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.28;
+}
+.trailer-loading-inner {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: #fff;
+  text-align: center;
+}
+.trailer-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+
+.trailer-native {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+}
+.trailer-native.idle {
+  cursor: none;
+}
+.trailer-hit {
+  position: absolute;
+  inset: 0;
+}
+.trailer-buffering {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.trailer-top,
+.trailer-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  transition: opacity 0.25s;
+}
+.trailer-top {
+  top: 0;
+  background: linear-gradient(180deg, #000b, transparent);
+}
+.trailer-top-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.trailer-bottom {
+  bottom: 0;
+  padding-top: 40px;
+  background: linear-gradient(0deg, #000c, transparent);
+}
+.trailer-native.idle .trailer-top,
+.trailer-native.idle .trailer-bottom {
+  opacity: 0;
+  pointer-events: none;
+}
+.trailer-native .icon-btn {
+  color: #fff;
+}
+.trailer-time {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: #fffc;
+  min-width: 38px;
+  text-align: center;
+}
+.trailer-seek {
+  flex: 1;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+.trailer-seek::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 4px;
+  background: #ffffff38;
+}
+.trailer-seek > i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--accent);
+  transform-origin: left center;
+}
+
+.trailer-embed {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #000d;
+  animation: fade-in 0.2s ease-out;
+}
+.trailer-embed-box {
+  width: min(1180px, 100%, calc((100vh - 150px) * 16 / 9));
+  display: grid;
+  gap: 12px;
+  animation: modal-in 0.22s ease-out;
+}
+.trailer-embed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+}
+.trailer-embed-head .icon-btn {
+  color: #fff;
+}
+.trailer-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 30px 80px -20px #000;
+}
+.trailer-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.trailer-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: #fffa;
+}

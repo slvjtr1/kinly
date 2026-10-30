@@ -1,0 +1,12 @@
+[Desktop Entry]
+Categories=AudioVideo;Video;Player;
+Comment={{comment}}
+Exec={{exec}} %f
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name={{name}}
+GenericName=Media Center
+Keywords=movies;series;tv;video;player;subtitles;
+Terminal=false
+Type=Application
+MimeType=video/x-matroska;video/mp4;video/x-m4v;video/x-msvideo;video/quicktime;video/webm;video/mp2t;video/mpeg;video/x-ms-wmv;

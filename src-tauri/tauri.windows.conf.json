@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["nsis", "msi"],
+    "resources": {
+      "windows/libmpv-2.dll": "libmpv-2.dll",
+      "windows/ffmpeg.exe": "ffmpeg.exe",
+      "windows/yt-dlp.exe": "yt-dlp.exe",
+      "windows/ffmpeg-LICENSE.txt": "notices/ffmpeg-LICENSE.txt",
+      "windows/NOTICE-windows.txt": "notices/NOTICE-windows.txt"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+# Deploy settings for `supabase functions deploy`.
+
+[functions.trakt-oauth]
+# The app authenticates with a publishable key (sb_publishable_…), which is not a JWT, so the
+# gateway's JWT check must be off. The function checks the key and rate-limits by itself.
+verify_jwt = false

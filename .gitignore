@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+src-tauri/target/
+src-tauri/gen/
+*.log
+.vite/
+coverage/
+release/
+.sysroot/
+screenshots/
+.env
+.env.local
+.env.*.local
+# Windows native deps fetched by scripts/fetch-windows-deps.ps1
+src-tauri/windows/
+# TypeScript incremental build state
+*.tsbuildinfo

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Kinly",
+  "version": "1.0.0",
+  "identifier": "app.kinly.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:web",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Kinly",
+        "width": 1360,
+        "height": 840,
+        "minWidth": 960,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "backgroundColor": [
+          11,
+          12,
+          16,
+          255
+        ],
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http: asset: http://asset.localhost; connect-src 'self' ipc: http://ipc.localhost; font-src 'self' data:; media-src 'self'; object-src 'none'; frame-src https://www.youtube-nocookie.com; base-uri 'self'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$APPCACHE/thumbs/*"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Video",
+    "shortDescription": "Lean media center for movies and series",
+    "longDescription": "Kinly is a focused media center for movies and TV series with an integrated mpv player, automatic subtitle selection and synchronization, and first-class Arabic subtitle typography.",
+    "copyright": "Copyright (c) 2026 Kinly contributors. Portions (c) 2026 Compass (MIT).",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "targets": [
+      "deb",
+      "appimage"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "fonts/*.ttf": "fonts/",
+      "../licenses/OFL.txt": "notices/OFL.txt",
+      "../licenses/Inter-OFL.txt": "notices/Inter-OFL.txt",
+      "../licenses/GPL-2.0.txt": "notices/GPL-2.0.txt",
+      "../licenses/LGPL-2.1.txt": "notices/LGPL-2.1.txt",
+      "../THIRD_PARTY_NOTICES.md": "notices/THIRD_PARTY_NOTICES.md",
+      "../LICENSE": "notices/LICENSE"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libmpv2",
+          "libgl1",
+          "libegl1",
+          "ffmpeg",
+          "ca-certificates"
+        ],
+        "recommends": [
+          "yt-dlp"
+        ],
+        "section": "video",
+        "priority": "optional",
+        "desktopTemplate": "kinly.desktop"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  }
+}

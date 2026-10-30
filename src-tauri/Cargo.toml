@@ -1,0 +1,62 @@
+[package]
+name = "kinly"
+version = "1.0.0"
+description = "Kinly — a lean media center for movies and series"
+authors = ["Kinly contributors"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.80"
+
+[lib]
+name = "kinly_lib"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time", "fs", "sync", "io-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "gzip"] }
+libmpv2 = "=4.1.0"
+libmpv2-sys = "4"
+realfft = "3"
+webrtc-vad = "0.4"
+encoding_rs = "0.8"
+chardetng = "1"
+regex = "1"
+sha2 = "0.10"
+walkdir = "2"
+dirs = "5"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = { version = "0.18", features = ["v3_24"] }
+
+# Windows: DXGI/D3D11 adapter and decoder probing, the mpv child window, and the
+# WebView2 controller (same webview2-com/windows versions wry 0.57 uses).
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_System_Registry",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+  "Win32_UI_Accessibility",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+codegen-units = 4
+lto = "thin"
+opt-level = 3
+strip = "symbols"
+panic = "unwind"

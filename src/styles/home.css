@@ -1,0 +1,256 @@
+/* Home hero carousel. Theme tokens come from app.css. Only transform and opacity animate.
+   The slide is driven from Home.tsx (requestAnimationFrame writes the track's transform), so it
+   runs in every performance mode. "maximum" adds a text drift; "balanced" a plain fade;
+   "performance" (which turns CSS transitions off app-wide) only the slide. */
+
+.hc {
+  --hc-ease: cubic-bezier(0.22, 0.75, 0.2, 1);
+  position: relative;
+  height: clamp(440px, 70vh, 680px);
+  margin: calc(-1 * (var(--topbar) + 24px)) calc(-1 * var(--gutter)) 8px;
+  overflow: hidden;
+  outline: none;
+  isolation: isolate;
+  background: var(--surface);
+  contain: layout paint;
+}
+.hc.hero-loading {
+  background: var(--surface);
+}
+
+/* Backdrops: one row of full-width frames moved by a single transform. */
+.hc-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  will-change: transform; /* moved by the slide driver in Home.tsx */
+}
+.hc-frame {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.hc-frame img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  display: block;
+  animation: fade-in 0.5s ease-out;
+}
+/* A static shade over the moving pictures keeps the text readable during the slide. */
+.hc-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--bg) 2%, color-mix(in srgb, var(--bg) 72%, transparent) 30%, color-mix(in srgb, var(--bg) 18%, transparent) 62%, transparent 82%),
+    linear-gradient(0deg, var(--bg) 3%, color-mix(in srgb, var(--bg) 40%, transparent) 26%, transparent 50%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 62%, transparent), transparent 24%);
+}
+
+/* Text: every slide's block is stacked; the active one fades (and in "maximum" drifts) in. */
+.hc-texts {
+  position: absolute;
+  z-index: 1;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: 64px;
+  max-width: 620px;
+  display: grid;
+}
+.hc-content {
+  grid-area: 1 / 1;
+  align-self: end;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.45s ease, visibility 0s linear 0.45s;
+}
+.hc-content.on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.55s ease 0.15s, visibility 0s;
+}
+html[data-perf="maximum"] .hc-content {
+  transform: translateX(-24px);
+  transition: opacity 0.45s ease, transform 0.45s var(--hc-ease), visibility 0s linear 0.45s;
+}
+html[data-perf="maximum"] .hc-content.on {
+  transform: none;
+  transition: opacity 0.6s ease 0.18s, transform 0.7s var(--hc-ease) 0.18s, visibility 0s;
+}
+.hc-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.hc-kicker span {
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.hc-logo {
+  display: block;
+  max-width: min(440px, 80%);
+  max-height: 132px;
+  object-fit: contain;
+  object-position: left bottom;
+  margin-bottom: 18px;
+  filter: drop-shadow(0 6px 24px #0007);
+}
+.hc-title {
+  font-size: clamp(36px, 4.4vw, 56px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.02;
+  margin: 0 0 14px;
+}
+.hc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  color: var(--text-dim);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.hc-genre {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  font-size: 12px;
+}
+.hc-desc {
+  margin: 0;
+  color: color-mix(in srgb, var(--text) 84%, transparent);
+  font-size: 15px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+/* Arrows */
+.hc-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.hc-arrow.prev {
+  left: 14px;
+}
+.hc-arrow.next {
+  right: 14px;
+}
+.hc:hover .hc-arrow,
+.hc-arrow:focus-visible {
+  opacity: 1;
+}
+.hc-arrow:hover {
+  transform: scale(1.06);
+}
+
+/* Dots: the active one is a pill that fills over the slide's time. */
+.hc-dots {
+  position: absolute;
+  z-index: 2;
+  right: var(--gutter);
+  bottom: 70px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hc-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 32%, transparent);
+  cursor: pointer;
+  overflow: hidden;
+  transition: width 0.3s var(--hc-ease), background-color 0.2s;
+}
+.hc-dot:hover {
+  background: color-mix(in srgb, var(--text) 60%, transparent);
+}
+.hc-dot.on {
+  width: 34px;
+  background: color-mix(in srgb, var(--text) 26%, transparent);
+}
+.hc-dot i {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: hc-fill linear both;
+}
+.hc.paused .hc-dot i {
+  animation-play-state: paused;
+}
+@keyframes hc-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Light theme: the shade is light, so the photo shows less and the text stays dark. */
+[data-theme="daylight"] .hc-logo {
+  filter: drop-shadow(0 2px 10px #0004);
+}
+
+@media (max-width: 900px) {
+  .hc-texts {
+    bottom: 84px;
+  }
+  .hc-dots {
+    left: var(--gutter);
+    right: auto;
+    bottom: 40px;
+  }
+  .hc-arrow {
+    display: none;
+  }
+}
+@media (max-height: 800px) {
+  .hc-logo {
+    max-height: 104px;
+    margin-bottom: 14px;
+  }
+  .hc-texts {
+    bottom: 52px;
+  }
+  .hc-dots {
+    bottom: 58px;
+  }
+  .hc-actions {
+    margin-top: 18px;
+  }
+}

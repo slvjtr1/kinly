@@ -1,0 +1,81 @@
+# Tests on every push and pull request. Release packages: release.yml.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_VERSION: "1.99.1"
+  NODE_VERSION: "24"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: Linux (typecheck, vitest, cargo test)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: System packages (WebKitGTK, libmpv)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev \
+            libmpv-dev ffmpeg build-essential pkg-config
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Rust ${{ env.RUST_VERSION }}
+        run: rustup toolchain install "$RUST_VERSION" --profile minimal && rustup default "$RUST_VERSION"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+      - name: Versions agree (release metadata)
+        run: bash scripts/release-meta.sh
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npx vitest run
+      - run: npm run build:web
+      - name: cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  windows:
+    name: Windows (cargo build + test)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Rust ${{ env.RUST_VERSION }}
+        shell: pwsh
+        run: rustup toolchain install $env:RUST_VERSION --profile minimal; rustup default $env:RUST_VERSION
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+      - name: libmpv + ffmpeg + yt-dlp (pinned, sha256-verified)
+        shell: pwsh
+        run: ./scripts/fetch-windows-deps.ps1
+      - run: npm ci
+      # tauri's context macro reads the built frontend (../dist).
+      - run: npm run build:web
+      - name: cargo build
+        run: cargo build --manifest-path src-tauri/Cargo.toml --locked
+      - name: cargo test
+        shell: pwsh
+        # Not yet confirmed green on Windows; flip to blocking once it is.
+        continue-on-error: true
+        run: |
+          $env:PATH = "$env:KINLY_MPV_DIR;$env:PATH"
+          cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
