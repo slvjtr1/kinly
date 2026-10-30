@@ -56,7 +56,11 @@ pub fn auth_callback_listen(app: AppHandle) -> bool {
                     let n = stream.read(&mut buf).unwrap_or(0);
                     let line = String::from_utf8_lossy(&buf[..n]);
                     let path = line.split_whitespace().nth(1).unwrap_or("/");
-                    let (ctype, body) = if path.starts_with("/done") {
+                    let (ctype, body) = if !addressed_here(&line) {
+                        // Another host name that resolves to loopback (DNS rebinding, or a request
+                        // a web page made under some other name): not this page.
+                        ("text/plain", "")
+                    } else if path.starts_with("/done") {
                         let _ = app.emit("auth:callback", path.contains("ok=1"));
                         ("text/plain", "ok")
                     } else if path == "/" || path.starts_with("/?") || path.starts_with("/#") {
@@ -77,4 +81,33 @@ pub fn auth_callback_listen(app: AppHandle) -> bool {
         RUNNING.store(false, Ordering::SeqCst);
     });
     true
+}
+
+/// True when the request's Host header names this page: `localhost:3000` (the Site URL Supabase
+/// links to) or `127.0.0.1:3000`.
+fn addressed_here(request: &str) -> bool {
+    request
+        .lines()
+        .skip(1)
+        .take_while(|l| !l.is_empty())
+        .filter_map(|l| l.split_once(':'))
+        .find(|(k, _)| k.trim().eq_ignore_ascii_case("host"))
+        .is_some_and(|(_, v)| matches!(v.trim().to_ascii_lowercase().as_str(), "localhost:3000" | "127.0.0.1:3000"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::addressed_here;
+
+    #[test]
+    fn answers_only_requests_addressed_to_the_landing_page() {
+        assert!(addressed_here("GET /done?ok=1 HTTP/1.1\r\nHost: localhost:3000\r\nAccept: */*\r\n\r\n"));
+        assert!(addressed_here("GET / HTTP/1.1\r\nhost: 127.0.0.1:3000\r\n\r\n"));
+        // Other names that resolve to loopback, and requests without a Host header.
+        assert!(!addressed_here("GET /done?ok=1 HTTP/1.1\r\nHost: localtest.me:3000\r\n\r\n"));
+        assert!(!addressed_here("GET /done?ok=1 HTTP/1.1\r\nHost: attacker.example:3000\r\n\r\n"));
+        assert!(!addressed_here("GET /done?ok=1 HTTP/1.1\r\n\r\n"));
+        // A "Host:" line in the body does not count.
+        assert!(!addressed_here("POST /done HTTP/1.1\r\nX: 1\r\n\r\nHost: localhost:3000"));
+    }
 }

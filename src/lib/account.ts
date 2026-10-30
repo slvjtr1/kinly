@@ -299,6 +299,9 @@ export function refreshSession(): Promise<StoredSession | null> {
       scheduleRetry();
       throw e;
     }
+    // Signed out (or into another account) while the request was out: the answer is for a
+    // session that no longer exists, so it must neither sign back in nor sign the new one out.
+    if (session !== current) return session;
     if (r.status >= 200 && r.status < 300) {
       const s = parseSession(safeJson(r.body));
       if (!s) throw new AuthError("Unexpected response from the account service.");

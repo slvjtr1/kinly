@@ -175,8 +175,9 @@ impl Downloader {
         Some(r.clone())
     }
 
-    /// Final state of a download. `None` removes the record (cancelled).
-    fn finish(&self, id: u64, outcome: Option<Result<u64, String>>) -> Option<Record> {
+    /// Final state of a download: bytes received and where the file ended up, or the error.
+    /// `None` removes the record (cancelled).
+    fn finish(&self, id: u64, outcome: Option<Result<(u64, PathBuf), String>>) -> Option<Record> {
         let mut i = self.inner.lock().ok()?;
         i.cancels.remove(&id);
         let out = match outcome {
@@ -187,8 +188,10 @@ impl Downloader {
             Some(res) => {
                 let r = i.records.get_mut(&id)?;
                 match res {
-                    Ok(received) => {
+                    Ok((received, path)) => {
                         r.received = received;
+                        r.name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                        r.path = path.display().to_string();
                         r.state = DONE.into();
                         r.error = None;
                     }
@@ -346,14 +349,50 @@ pub fn pick_ext(name: &str, url_path: &str, content_type: &str) -> &'static str 
     }
 }
 
-/// `<dir>/<stem>.<ext>`, or `<stem> (2).<ext>` … when that file (or its .part) already exists.
-pub fn unique_path(dir: &Path, stem: &str, ext: &str) -> PathBuf {
-    let free = |p: &Path| !p.exists() && !part_of(p).exists();
-    let first = dir.join(format!("{stem}.{ext}"));
-    if free(&first) {
-        return first;
+/// Numbered names tried for one title before giving up: `<stem>.<ext>`, `<stem> (2).<ext>` …
+const MAX_COPIES: u32 = 999;
+
+/// `<dir>/<stem>.<ext>`, then `<stem> (2).<ext>` … `<stem> (999).<ext>`.
+fn candidates<'a>(dir: &'a Path, stem: &'a str, ext: &'a str) -> impl Iterator<Item = PathBuf> + 'a {
+    std::iter::once(dir.join(format!("{stem}.{ext}"))).chain((2..=MAX_COPIES).map(move |n| dir.join(format!("{stem} ({n}).{ext}"))))
+}
+
+/// True when something (a file, folder or link, even a broken one) has this name.
+fn taken(p: &Path) -> bool {
+    std::fs::symlink_metadata(p).is_ok()
+}
+
+fn too_many(stem: &str) -> String {
+    format!("The download folder already has too many files named “{stem}”. Move or rename some of them and try again.")
+}
+
+/// Picks the first free name and creates its `.part` file. A name is free when neither the file
+/// nor its `.part` exists; the `.part` is created with `create_new`, so two downloads never share a
+/// file and an existing file (or a link planted under that name) is never opened.
+pub fn reserve(dir: &Path, stem: &str, ext: &str) -> Result<(PathBuf, std::fs::File), String> {
+    for path in candidates(dir, stem, ext) {
+        if taken(&path) {
+            continue;
+        }
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(part_of(&path)) {
+            Ok(f) => return Ok((path, f)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(format!("Could not create the file: {e}")),
+        }
     }
-    (2..1000).map(|n| dir.join(format!("{stem} ({n}).{ext}"))).find(|p| free(p)).unwrap_or(first)
+    Err(too_many(stem))
+}
+
+/// Moves a finished `.part` file to `path`. If a file of that name appeared during the download
+/// (renaming would replace it), the next free name is used instead. Returns where the file is.
+fn complete(part: &Path, path: &Path, stem: &str, ext: &str) -> Result<PathBuf, String> {
+    let dir = path.parent().ok_or("Could not finish the file: no folder")?;
+    let target = std::iter::once(path.to_path_buf())
+        .chain(candidates(dir, stem, ext))
+        .find(|p| !taken(p) && (p == path || !taken(&part_of(p))))
+        .ok_or_else(|| too_many(stem))?;
+    std::fs::rename(part, &target).map_err(|e| format!("Could not finish the file: {e}"))?;
+    Ok(target)
 }
 
 /// Strips a known video extension so it is not doubled when the final one is added.
@@ -400,10 +439,21 @@ pub fn ensure_writable(dir: &Path) -> Result<(), String> {
         return Err("That location is a file, not a folder.".into());
     }
     std::fs::create_dir_all(dir).map_err(|e| format!("Kinly can't create this folder: {e}"))?;
-    let probe = dir.join(format!(".kinly-write-test-{}", std::process::id()));
-    std::fs::write(&probe, b"").map_err(|e| format!("Kinly can't write to this folder: {e}"))?;
-    let _ = std::fs::remove_file(&probe);
-    Ok(())
+    // A new, empty probe file: `create_new` never opens (or truncates) anything already there,
+    // including a link planted under the same name, so only the probe itself is removed.
+    for i in 0..64 {
+        let probe = dir.join(format!(".kinly-write-test-{}-{i}", std::process::id()));
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&probe) {
+            Ok(f) => {
+                drop(f);
+                let _ = std::fs::remove_file(&probe);
+                return Ok(());
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(format!("Kinly can't write to this folder: {e}")),
+        }
+    }
+    Err("Kinly can't write to this folder: too many leftover test files.".into())
 }
 
 fn resolve_dir(dir: Option<String>) -> Result<PathBuf, String> {
@@ -457,9 +507,12 @@ pub async fn download_start(
         return Err("This link leads to a web page, not a video file.".into());
     }
     let name = sanitize_name(&name);
-    let path = unique_path(&dir, stem_of(&name), pick_ext(&name, parsed.path(), &ctype));
+    let ext = pick_ext(&name, parsed.path(), &ctype);
+    let stem = stem_of(&name).to_string();
+    let stem2 = stem.clone();
+    let (path, file) = tokio::task::spawn_blocking(move || reserve(&dir, &stem2, ext)).await.map_err(|e| e.to_string())??;
+    let file = tokio::fs::File::from_std(file);
     let part = part_of(&path);
-    let file = tokio::fs::File::create(&part).await.map_err(|e| format!("Could not create the file: {e}"))?;
 
     let id = state.next.fetch_add(1, Ordering::Relaxed) + 1;
     let cancel = Arc::new(AtomicBool::new(false));
@@ -481,7 +534,14 @@ pub async fn download_start(
     tauri::async_runtime::spawn(async move {
         let result = copy(resp, file, id, &cancel, &app).await;
         let outcome = match result {
-            Ok(n) => tokio::fs::rename(&part, &path).await.map(|_| n).map_err(|e| format!("Could not finish the file: {e}")),
+            Ok(n) => {
+                let (part, path) = (part.clone(), path.clone());
+                tokio::task::spawn_blocking(move || complete(&part, &path, &stem, ext))
+                    .await
+                    .map_err(|e| e.to_string())
+                    .and_then(|r| r)
+                    .map(|done| (n, done))
+            }
             Err(e) => Err(e),
         };
         if outcome.is_err() {
@@ -604,12 +664,84 @@ mod tests {
     }
 
     #[test]
-    fn unique_paths() {
+    fn reserved_names_are_unique() {
         let dir = tmp("unique");
-        assert_eq!(unique_path(&dir, "a", "mkv"), dir.join("a.mkv"));
-        std::fs::write(dir.join("a.mkv"), b"").unwrap();
-        std::fs::write(dir.join("a (2).mkv.part"), b"").unwrap();
-        assert_eq!(unique_path(&dir, "a", "mkv"), dir.join("a (3).mkv"));
+        let (first, _f) = reserve(&dir, "a", "mkv").unwrap();
+        assert_eq!(first, dir.join("a.mkv"));
+        assert!(part_of(&first).is_file());
+        // A second download of the same title while the first runs gets its own file.
+        assert_eq!(reserve(&dir, "a", "mkv").unwrap().0, dir.join("a (2).mkv"));
+        std::fs::write(dir.join("a (3).mkv"), b"keep").unwrap();
+        assert_eq!(reserve(&dir, "a", "mkv").unwrap().0, dir.join("a (4).mkv"));
+        assert_eq!(std::fs::read(dir.join("a (3).mkv")).unwrap(), b"keep");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn running_out_of_names_is_an_error_not_an_overwrite() {
+        let dir = tmp("exhaust");
+        std::fs::write(dir.join("a.mkv"), b"original").unwrap();
+        for n in 2..=MAX_COPIES {
+            std::fs::write(dir.join(format!("a ({n}).mkv")), b"x").unwrap();
+        }
+        let err = reserve(&dir, "a", "mkv").unwrap_err();
+        assert!(err.contains("too many files named"), "{err}");
+        assert_eq!(std::fs::read(dir.join("a.mkv")).unwrap(), b"original");
+        assert!(!part_of(&dir.join("a.mkv")).exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn finishing_never_replaces_a_file_that_appeared_meanwhile() {
+        let dir = tmp("complete");
+        let (path, f) = reserve(&dir, "a", "mkv").unwrap();
+        drop(f);
+        std::fs::write(part_of(&path), b"downloaded").unwrap();
+        // Another program saved a file under the same name during the download.
+        std::fs::write(&path, b"someone else's").unwrap();
+        let done = complete(&part_of(&path), &path, "a", "mkv").unwrap();
+        assert_eq!(done, dir.join("a (2).mkv"));
+        assert_eq!(std::fs::read(&path).unwrap(), b"someone else's");
+        assert_eq!(std::fs::read(&done).unwrap(), b"downloaded");
+        // The usual case: the reserved name is still free.
+        let (p2, f2) = reserve(&dir, "b", "mp4").unwrap();
+        drop(f2);
+        assert_eq!(complete(&part_of(&p2), &p2, "b", "mp4").unwrap(), p2);
+        assert!(p2.is_file() && !part_of(&p2).exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_write_check_leaves_existing_files_alone() {
+        let dir = tmp("probe");
+        // Files under the probe's names (left over, or planted) are neither emptied nor removed.
+        for i in 0..3 {
+            std::fs::write(dir.join(format!(".kinly-write-test-{}-{i}", std::process::id())), b"data").unwrap();
+        }
+        assert!(ensure_writable(&dir).is_ok());
+        for i in 0..3 {
+            assert_eq!(std::fs::read(dir.join(format!(".kinly-write-test-{}-{i}", std::process::id()))).unwrap(), b"data");
+        }
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 3, "the probe itself is removed");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_write_check_does_not_follow_links() {
+        let dir = tmp("probelink");
+        let victim = dir.join("victim.txt");
+        std::fs::write(&victim, b"precious").unwrap();
+        std::fs::create_dir_all(dir.join("dl")).unwrap();
+        for i in 0..64 {
+            std::os::unix::fs::symlink(&victim, dir.join("dl").join(format!(".kinly-write-test-{}-{i}", std::process::id()))).unwrap();
+        }
+        // Every probe name is a link to someone else's file: the check fails without touching it.
+        assert!(ensure_writable(&dir.join("dl")).is_err());
+        assert_eq!(std::fs::read(&victim).unwrap(), b"precious");
+        let _ = std::fs::remove_file(dir.join("dl").join(format!(".kinly-write-test-{}-0", std::process::id())));
+        assert!(ensure_writable(&dir.join("dl")).is_ok());
+        assert_eq!(std::fs::read(&victim).unwrap(), b"precious");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -714,6 +846,12 @@ mod tests {
         d.insert(rec(1, &p, RUNNING), Arc::default());
         assert_eq!(d.set_received(1, 50).unwrap().received, 50);
         assert_eq!(d.finish(1, Some(Err("broke".into()))).unwrap().state, FAILED);
+        // A finished download records where the file ended up.
+        d.insert(rec(3, &p, RUNNING), Arc::default());
+        let moved = std::env::temp_dir().join("kinly-finish (2).mkv");
+        let r = d.finish(3, Some(Ok((9, moved.clone())))).unwrap();
+        assert_eq!((r.state.as_str(), r.received, r.name.as_str()), (DONE, 9, "kinly-finish (2).mkv"));
+        assert_eq!(r.path, moved.display().to_string());
         d.insert(rec(2, &p, RUNNING), Arc::default());
         assert_eq!(d.finish(2, None).unwrap().state, "cancelled");
         assert!(d.list().iter().all(|r| r.id != 2));

@@ -999,7 +999,8 @@ async function syncAccountOnce(): Promise<boolean> {
     newSeen = written || newSeen;
   }
   if (newSeen) pdoc.accountSeen[uid] = newSeen;
-  pdoc.accountDirtyAt = undefined;
+  // A change made while this round was on the network is newer than what it sent: keep it dirty.
+  if (pdoc.accountDirtyAt === dirtyAt) pdoc.accountDirtyAt = undefined;
   void savePdoc();
   return true;
 }
