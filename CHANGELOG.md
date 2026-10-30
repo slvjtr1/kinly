@@ -1,23 +1,10 @@
 # Changelog
 
-## 1.1.0 Beta — 2026-10-30
+## 1.1.0 — 2026-10-30
 
-A pre-release for Windows x64 and Linux. Kinly 1.0.1 remains the stable release.
+For Windows x64 and Linux. Tested as 1.1.0 Beta and Beta 2 before this release.
 
-### Beta 2
-Fixes found while testing Beta 1 on Windows:
-- The focus highlight now always shows when you use the arrow keys, also right after
-  a mouse click (it could stay invisible before).
-- Back returns focus to the card you opened, not to another control with the same
-  title (such as the matching dot of the Home carousel).
-- Arrow keys reach buttons inside a field, such as the search box's clear button.
-- Esc leaves the profile editor.
-- The "Downloaded in Kinly" list is laid out correctly; small files show their size
-  in KB.
-- Corrected texts: the default theme (Kinly), where in-app downloads are saved, and
-  the clear-history confirmation for a single search.
-
-> **Trakt:** Trakt integration is temporarily unavailable in Kinly 1.1.0 Beta due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
+> **Trakt:** Trakt integration is temporarily unavailable in Kinly 1.1.0 due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
 > Saved Trakt connections stay on your computer, untouched, and Kinly makes no Trakt
 > requests in this version.
 
@@ -52,6 +39,21 @@ Fixes found while testing Beta 1 on Windows:
   GitHub shows each file's SHA-256 digest.
 - Licences: DiceBear avatar credits and the CC BY 4.0 / CC0 texts added to the
   notices; Compass attribution described file by file.
+
+### Fixed
+- Network requests check the address a server name resolves to, also after redirects,
+  so a link from an addon can't make Kinly contact link-local (cloud metadata)
+  addresses or its own sign-in page under another name. Local addon servers on this
+  computer or the LAN keep working.
+- Downloads never overwrite an existing file: two downloads of the same title get
+  separate files, a file that appears under the same name during a download is kept
+  (the download gets the next free name), and running out of numbered names is
+  reported instead.
+- Checking a download folder no longer touches an existing file (or link) that has
+  the name of Kinly's test file.
+- Signing out while the session was being renewed could sign you back in; a late
+  answer for an old session could sign out a new one.
+- A settings change made while an earlier change was being uploaded is now synced too.
 
 ### Known limitations
 - Kinly is not code-signed. Microsoft Defender flagged earlier builds of

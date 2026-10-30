@@ -29,7 +29,7 @@ A new platform would reuse the shared core and most of the UI, and replace the
 platform implementations (see PLATFORM_ARCHITECTURE.md for what that means per platform).
 
 Feature flags for functionality that is built but switched off live in
-`src/lib/features.ts` (Trakt is off in 1.1.0 Beta; see
+`src/lib/features.ts` (Trakt is off in 1.1.0; see
 [TRAKT_TEMPORARILY_DISABLED.md](TRAKT_TEMPORARILY_DISABLED.md)).
 
 ```

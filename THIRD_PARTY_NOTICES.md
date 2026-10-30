@@ -103,9 +103,10 @@ The Windows installer's `notices/NOTICE-windows.txt` names the exact archives
 `notices/ffmpeg-LICENSE.txt` carries FFmpeg's license. The corresponding source
 for the GPL/LGPL binaries bundled with a release is published next to it in the
 same repository, as the companion release `sources-<tag>` (for example
-`sources-v1.1.0-beta`): the `source-*.tar.gz` archives, `GPL-SOURCES.txt` (what each
-archive is) and `SHA256SUMS-sources.txt`. Each release's notes link to it. Releases up
-to v1.0.1 have these files attached to the release itself. The source is also available
+`sources-v1.1.0`): the `source-*.tar.gz` archives, `GPL-SOURCES.txt` (what each
+archive is) and `SHA256SUMS-sources.txt`. Each release's notes link to it. v1.0.0's
+source is in `sources-v1.0.0`; v1.0.1 has these files attached to the release itself.
+The source is also available
 from the projects listed above at the versions named there.
 
 ## Libraries compiled into Kinly

@@ -1,6 +1,6 @@
 # Platforms
 
-| Platform | Status in 1.1.0 Beta |
+| Platform | Status in 1.1.0 |
 | --- | --- |
 | Windows 10/11 x64 | Supported (NSIS `.exe`, `.msi`) |
 | Linux x86-64 (Ubuntu 24.04 / Mint 22 and similar) | Supported (`.deb`, `.AppImage`) |

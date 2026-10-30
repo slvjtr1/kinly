@@ -56,7 +56,7 @@ it one.
   traits that heuristic models associate with downloaders.
 - The `.exe` had no publisher in its version information.
 
-## What changed in 1.1.0 Beta
+## What changed in 1.1.0
 
 - **No download-and-run on first use:** trailers now use the bundled `yt-dlp.exe` first.
   A new copy is downloaded only when no copy works (for example after YouTube changes).
@@ -75,9 +75,10 @@ it one.
 Nothing was obfuscated or packed, no binary was modified to change how scanners see it,
 and Kinly does not add antivirus exclusions.
 
-## Result for 1.1.0 Beta
+## Results
 
-See "Verification of the 1.1.0 Beta build" at the end of this page.
+The 1.1.0 beta builds were checked on Windows; see "Verification of the 1.1.0 Beta build"
+at the end of this page.
 
 ## What to do if Defender flags Kinly
 

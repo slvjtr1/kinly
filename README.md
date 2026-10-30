@@ -12,17 +12,16 @@ Supported platforms: Windows 10/11 x64 and Linux x86-64. Android, Android TV and
 webOS are not supported; [docs/PLATFORM_ARCHITECTURE.md](docs/PLATFORM_ARCHITECTURE.md)
 describes what they would take.
 
-> **Kinly 1.1.0 Beta:** Trakt integration is temporarily unavailable in Kinly 1.1.0 Beta due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
+> **Kinly 1.1.0:** Trakt integration is temporarily unavailable in Kinly 1.1.0 due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
 
 ## Install
 
 Download Kinly from the repository's
-[Releases](https://github.com/slvjtr1/kinly/releases) page: the latest stable
-release is 1.0.1, and **1.1.0 Beta** is available as a pre-release. Each release has
-four installers (`.exe`, `.msi`, `.deb`, `.AppImage`); GitHub shows the SHA-256 digest
-next to each file, which you can compare with `Get-FileHash <file>` (Windows) or
-`sha256sum <file>` (Linux). The examples below use the 1.1.0 file names (a beta's
-files carry the plain version number).
+[Releases](https://github.com/slvjtr1/kinly/releases) page: the latest release is
+**1.1.0**. Each release has four installers (`.exe`, `.msi`, `.deb`, `.AppImage`);
+GitHub shows the SHA-256 digest next to each file, which you can compare with
+`Get-FileHash <file>` (Windows) or `sha256sum <file>` (Linux). The examples below use
+the 1.1.0 file names.
 
 **Windows 10/11 (x64):** run `Kinly_1.1.0_x64-setup.exe` (installs for the
 current user) or use the `.msi`. The installer includes the video engine, FFmpeg
@@ -118,7 +117,7 @@ household lock, not account security). Settings → Account can delete the cloud
 data or the whole account. Details, including exactly what is stored where:
 [ACCOUNTS.md](ACCOUNTS.md).
 
-Trakt integration is temporarily unavailable in Kinly 1.1.0 Beta due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
+Trakt integration is temporarily unavailable in Kinly 1.1.0 due to temporary technical issues. It has not been permanently discontinued and is planned to return in a future update.
 Existing Trakt connections stay saved on your computer and are not contacted. Details:
 [docs/TRAKT_TEMPORARILY_DISABLED.md](docs/TRAKT_TEMPORARILY_DISABLED.md).
 
@@ -171,7 +170,7 @@ Kinly has no telemetry and no ads. It only contacts:
 | IntroDB (`api.theintrodb.org`) | Playing a movie or episode | The title's TMDB/IMDb id, season and episode, and the video's duration |
 | TMDB (`api.themoviedb.org`, `image.tmdb.org`) | Only after you add your own TMDB key | Title ids, for recommendations and artwork |
 | Kinly's account service (Supabase) | Only when you sign in | Your email and password (to sign in), profiles, each profile's library (movies and series: watchlist, progress, history) and addon list, and the synced settings. Local files, their paths and thumbnails are never uploaded |
-| Trakt (`api.trakt.tv`), and Kinly's Trakt sign-in relay on the account service | Never in 1.1.0 Beta (Trakt is temporarily unavailable). When it returns: only after you connect Trakt for a profile | The sign-in code exchange (through the relay, which stores nothing), then your watchlist and history import and what you play (scrobbling), directly with Trakt |
+| Trakt (`api.trakt.tv`), and Kinly's Trakt sign-in relay on the account service | Never in 1.1.0 (Trakt is temporarily unavailable). When it returns: only after you connect Trakt for a profile | The sign-in code exchange (through the relay, which stores nothing), then your watchlist and history import and what you play (scrobbling), directly with Trakt |
 | YouTube (`youtube.com`, `youtube-nocookie.com`) | Playing a trailer | The trailer's video id |
 | GitHub (`github.com/yt-dlp`) | Playing a trailer, only when no working yt-dlp is available (none bundled or installed, or it fails because YouTube changed) | A download of the latest yt-dlp and its checksum list |
 | Microsoft | Windows installer, only if WebView2 is missing | The WebView2 runtime download |

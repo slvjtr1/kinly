@@ -1,6 +1,6 @@
-# Trakt in Kinly 1.1.0 Beta
+# Trakt in Kinly 1.1.0
 
-Trakt integration has been temporarily disabled in Kinly 1.1.0 Beta due to temporary technical issues. This is not a permanent removal. Trakt integration is planned to return in future updates.
+Trakt integration has been temporarily disabled in Kinly 1.1.0 due to temporary technical issues. This is not a permanent removal. Trakt integration is planned to return in future updates.
 
 No return date has been set.
 
